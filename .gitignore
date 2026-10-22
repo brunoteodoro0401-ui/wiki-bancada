@@ -1,0 +1,13 @@
+# Python / Backend
+.venv/
+__pycache__/
+.pytest_cache/
+*.db
+.jwt_secret
+.env
+
+# Node / Frontend
+node_modules/
+dist/
+.env.local
+.env.production.local
