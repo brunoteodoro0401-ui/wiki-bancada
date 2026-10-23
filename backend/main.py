@@ -41,6 +41,12 @@ app.add_middleware(
 _DUMMY_HASH = hash_password("senha-fictícia-para-timing")
 
 
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "API Bancada", "docs": "/docs"}
+
+
+
 def _get_or_404(db: Session, model, obj_id: int, label: str):
     obj = db.get(model, obj_id)
     if not obj:
