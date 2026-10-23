@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 import models
 
 ENV_FILE = Path(__file__).parent / ".env"
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
+FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"]
 
 
 def get_config(name: str, default: str = "") -> str:
@@ -33,6 +34,22 @@ def get_config(name: str, default: str = "") -> str:
             if k.strip() == name:
                 return v.strip().strip('"').strip("'") or default
     return default
+
+
+def _sync_db_settings(db: Session) -> None:
+    """Se GEMINI_API_KEY não estiver no ambiente local/Render, busca na tabela App_Settings do banco."""
+    if "PYTEST_CURRENT_TEST" in os.environ or get_config("GEMINI_API_KEY"):
+        return
+    try:
+        row = db.get(models.AppSetting, "gemini_api_key")
+        if row and row.value:
+            os.environ["GEMINI_API_KEY"] = row.value.strip()
+        mrow = db.get(models.AppSetting, "gemini_model")
+        if mrow and mrow.value:
+            os.environ["GEMINI_MODEL"] = mrow.value.strip()
+    except Exception:
+        pass
+
 
 STOPWORDS = {
     "a", "o", "e", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas",
@@ -124,20 +141,32 @@ def build_prompt(question: str, docs: List[Dict]) -> str:
 
 
 def call_llm(prompt: str) -> str:
-    """Chama a API REST do Gemini. Levanta exceção em qualquer falha."""
+    """Chama a API REST do Gemini com fallback automático de modelo."""
     key = get_config("GEMINI_API_KEY")
-    model = get_config("GEMINI_MODEL", DEFAULT_MODEL)
-    resp = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-        headers={"x-goog-api-key": key},
-        json={
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    preferred = get_config("GEMINI_MODEL", DEFAULT_MODEL)
+    candidates = [preferred, *[m for m in FALLBACK_MODELS if m != preferred]]
+
+    last_exc: Exception | None = None
+    for model in candidates:
+        try:
+            resp = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                headers={"x-goog-api-key": key},
+                json={
+                    "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                    "contents": [{"parts": [{"text": prompt}]}],
+                },
+                timeout=25,
+            )
+            if resp.status_code in (404, 429, 503):
+                last_exc = RuntimeError(f"{model}: HTTP {resp.status_code}")
+                continue
+            resp.raise_for_status()
+            return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except Exception as exc:
+            last_exc = exc
+            continue
+    raise last_exc or RuntimeError("Falha ao consultar Gemini")
 
 
 def _retrieval_answer(docs: List[Dict], note: str) -> str:
@@ -148,6 +177,7 @@ def _retrieval_answer(docs: List[Dict], note: str) -> str:
 
 
 def answer(db: Session, question: str) -> Dict:
+    _sync_db_settings(db)
     docs = retrieve(db, question)
     sources = [{"type": d["type"], "id": d["id"], "title": d["title"]} for d in docs]
 

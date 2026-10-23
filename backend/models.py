@@ -48,3 +48,11 @@ class WikiArticle(Base):
     category = Column(String, index=True)
     ai_context_text = Column(Text, nullable=False)
     tags = Column(String)
+
+
+class AppSetting(Base):
+    __tablename__ = "App_Settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+
