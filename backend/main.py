@@ -26,6 +26,10 @@ async def lifespan(_: FastAPI):
         import seed
         db = SessionLocal()
         try:
+            seed.seed_articles(db)
+            seed.seed_catalog(db)
+            seed.seed_extended_knowledge(db)
+            seed.seed_trusted_sources(db)
             seed.ensure_owner_admin(db)
             db.commit()
         finally:
@@ -52,7 +56,6 @@ _DUMMY_HASH = hash_password("senha-fictícia-para-timing")
 @app.get("/")
 def root():
     return {"status": "ok", "service": "API Bancada", "docs": "/docs"}
-
 
 
 def _get_or_404(db: Session, model, obj_id: int, label: str):
@@ -297,7 +300,53 @@ def delete_article(article_id: int, db: Session = Depends(get_db), _: models.Use
     return {"ok": True}
 
 
-# ====================== Assistente (RAG) ======================
+# ====================== Trusted Sources (Fontes da IA) ======================
+@app.get("/sources", response_model=List[schemas.TrustedSourceOut])
+def list_sources(db: Session = Depends(get_db)):
+    return db.query(models.TrustedSource).order_by(models.TrustedSource.id).all()
+
+
+@app.post("/sources", response_model=schemas.TrustedSourceOut, status_code=201)
+def create_source(data: schemas.TrustedSourceBase, db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
+    obj = models.TrustedSource(**data.model_dump())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@app.put("/sources/{source_id}", response_model=schemas.TrustedSourceOut)
+def update_source(source_id: int, data: schemas.TrustedSourceBase, db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
+    obj = _get_or_404(db, models.TrustedSource, source_id, "Fonte")
+    for k, v in data.model_dump().items():
+        setattr(obj, k, v)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@app.delete("/sources/{source_id}")
+def delete_source(source_id: int, db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
+    obj = _get_or_404(db, models.TrustedSource, source_id, "Fonte")
+    db.delete(obj)
+    db.commit()
+    return {"ok": True}
+
+
+# ====================== Importador Inteligente (Ingest) ======================
+@app.post("/ingest", response_model=schemas.IngestOut)
+def ingest(data: schemas.IngestIn, db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
+    return rag.ingest_content(
+        db=db,
+        source_type=data.source_type,
+        content=data.content,
+        target_device_hint=data.target_device_hint,
+        use_trusted_sources_only=data.use_trusted_sources_only,
+        auto_save=data.auto_save,
+    )
+
+
+# ====================== Assistente (RAG + Web) ======================
 @app.post("/ask", response_model=schemas.AskOut)
 def ask(data: schemas.AskIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return rag.answer(db, data.question)
+    return rag.answer(db, data.question, use_web=data.use_web)

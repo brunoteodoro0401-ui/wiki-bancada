@@ -5,12 +5,14 @@ import WikiView from './views/WikiView'
 import DevicesView from './views/DevicesView'
 import PartsView from './views/PartsView'
 import AssistantView from './views/AssistantView'
+import SourcesView from './views/SourcesView'
 import { ghostBtn, inputClass } from './components/EntityFormModal'
 
 const TABS = [
   { id: 'wiki', label: 'Dicas' },
   { id: 'devices', label: 'Aparelhos' },
   { id: 'parts', label: 'Peças e compatibilidade' },
+  { id: 'sources', label: 'Fontes da IA' },
   { id: 'assistant', label: 'Assistente IA' },
 ]
 
@@ -29,7 +31,7 @@ function Shell() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold text-slate-900">🔧 Wiki de Bancada</h1>
             <div className="flex items-center gap-3">
-              {tab !== 'assistant' && (
+              {tab !== 'assistant' && tab !== 'sources' && (
                 <>
                   <label htmlFor="search" className="sr-only">Buscar</label>
                   <input
@@ -75,6 +77,7 @@ function Shell() {
         {tab === 'wiki' && <WikiView search={query} />}
         {tab === 'devices' && <DevicesView search={query} />}
         {tab === 'parts' && <PartsView search={query} />}
+        {tab === 'sources' && <SourcesView />}
         {tab === 'assistant' && <AssistantView onRequireLogin={() => setShowAuth(true)} />}
       </main>
 

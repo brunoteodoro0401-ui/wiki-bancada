@@ -6,6 +6,7 @@ from security import MAX_PASSWORD_BYTES
 
 OpeningMethod = Literal["Frontal", "Traseira"]
 Role = Literal["admin", "tecnico"]
+IngestType = Literal["url", "youtube", "search", "text"]
 
 
 # ---------- Auth / Users ----------
@@ -96,9 +97,44 @@ class WikiOut(WikiBase):
     id: int
 
 
+# ---------- Trusted Sources (Fontes da IA) ----------
+class TrustedSourceBase(BaseModel):
+    nome: str = Field(min_length=1, max_length=150)
+    url_or_domain: str = Field(min_length=3, max_length=500)
+    categoria: Optional[str] = None
+    ativo: bool = True
+
+
+class TrustedSourceOut(TrustedSourceBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
+# ---------- Importador Inteligente (Ingest) ----------
+class IngestIn(BaseModel):
+    source_type: IngestType
+    content: str = Field(min_length=3, max_length=15000)
+    target_device_hint: Optional[str] = None
+    use_trusted_sources_only: bool = False
+    auto_save: bool = False
+
+
+class WebSourceOut(BaseModel):
+    title: str
+    url: str
+
+
+class IngestOut(BaseModel):
+    extracted_text_preview: str
+    source_references: List[WebSourceOut] = []
+    articles: List[WikiBase]
+    saved_count: int = 0
+
+
 # ---------- Assistente ----------
 class AskIn(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
+    use_web: bool = False
 
 
 class SourceOut(BaseModel):
@@ -109,5 +145,7 @@ class SourceOut(BaseModel):
 
 class AskOut(BaseModel):
     answer: str
-    mode: Literal["llm", "retrieval"]
+    mode: Literal["llm", "llm_web", "retrieval"]
     sources: List[SourceOut]
+    web_sources: List[WebSourceOut] = []
+    suggested_article: Optional[WikiBase] = None

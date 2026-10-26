@@ -57,7 +57,7 @@ def test_ask_without_api_key_uses_retrieval(client, db, tech_headers, monkeypatc
 
 def test_ask_no_match_does_not_call_llm(client, db, tech_headers, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "fake")
-    monkeypatch.setattr(rag, "call_llm", lambda p: (_ for _ in ()).throw(AssertionError("não deveria chamar")))
+    monkeypatch.setattr(rag, "call_llm", lambda p, **kw: (_ for _ in ()).throw(AssertionError("não deveria chamar")))
     populate(db)
     r = client.post("/ask", json={"question": "xyzzy quux plugh"}, headers=tech_headers)
     assert r.json()["sources"] == [] and "não tem informação" in r.json()["answer"]
@@ -67,7 +67,7 @@ def test_ask_with_llm_sends_context_and_returns_sources(client, db, tech_headers
     monkeypatch.setenv("GEMINI_API_KEY", "fake")
     captured = {}
 
-    def fake_llm(prompt):
+    def fake_llm(prompt, **kw):
         captured["prompt"] = prompt
         return "Evite calor [1]."
 
@@ -82,7 +82,7 @@ def test_ask_with_llm_sends_context_and_returns_sources(client, db, tech_headers
 def test_ask_falls_back_when_llm_fails(client, db, tech_headers, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "fake")
 
-    def boom(prompt):
+    def boom(prompt, **kw):
         raise RuntimeError("timeout")
 
     monkeypatch.setattr(rag, "call_llm", boom)
@@ -90,3 +90,33 @@ def test_ask_falls_back_when_llm_fails(client, db, tech_headers, monkeypatch):
     r = client.post("/ask", json={"question": "calor na tela do iPhone 11"}, headers=tech_headers)
     assert r.status_code == 200
     assert r.json()["mode"] == "retrieval" and "indisponível" in r.json()["answer"]
+
+
+def test_sources_crud_and_ingest_text(client, db, admin_headers, tech_headers, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    # Técnico não pode criar fonte confiável
+    assert client.post("/sources", json={"nome": "ClanGSM", "url_or_domain": "clangsm.com.br"}, headers=tech_headers).status_code == 403
+    # Admin cria fonte confiável
+    r = client.post("/sources", json={"nome": "ClanGSM", "url_or_domain": "clangsm.com.br", "categoria": "Fórum"}, headers=admin_headers)
+    assert r.status_code == 201
+    sid = r.json()["id"]
+    assert len(client.get("/sources").json()) == 1
+
+    # Admin importa texto do Facebook/Fórum com auto_save=True
+    ing = client.post(
+        "/ingest",
+        json={
+            "source_type": "text",
+            "content": "No Poco X3 Pro quando não liga, o defeito crônico é reballing de CPU e PMIC.",
+            "target_device_hint": "Poco X3 Pro",
+            "auto_save": True,
+        },
+        headers=admin_headers,
+    )
+    assert ing.status_code == 200
+    data = ing.json()
+    assert data["saved_count"] == 1
+    assert data["articles"][0]["target_device"] == "Poco X3 Pro"
+
+    # Remove a fonte
+    assert client.delete(f"/sources/{sid}", headers=admin_headers).status_code == 200

@@ -50,9 +50,18 @@ class WikiArticle(Base):
     tags = Column(String)
 
 
+class TrustedSource(Base):
+    __tablename__ = "Trusted_Sources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    url_or_domain = Column(String, nullable=False)
+    categoria = Column(String)
+    ativo = Column(Boolean, default=True)
+
+
 class AppSetting(Base):
     __tablename__ = "App_Settings"
 
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
-
