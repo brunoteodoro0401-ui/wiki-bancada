@@ -78,6 +78,19 @@ def seed_catalog(db):
             db.add(Compatibility(device_id=device.id, part_id=part.id, notas=notas))
 
 
+OWNER_EMAIL = "brunoteodoro0401@gmail.com"
+OWNER_PASSWORD_HASH = "$2b$12$UrmAfQXa5ulSesKsUlggneUshK292yi1DteQjglEPNVSE9Gjh.E7K"
+
+
+def ensure_owner_admin(db):
+    user = db.query(User).filter_by(email=OWNER_EMAIL).first()
+    if user:
+        user.role = "admin"
+        user.senha = OWNER_PASSWORD_HASH
+    else:
+        db.add(User(nome="Bruno Teodoro", email=OWNER_EMAIL, senha=OWNER_PASSWORD_HASH, role="admin"))
+
+
 def seed_admin(db):
     if db.query(User).filter_by(role="admin").first():
         print("Admin já existe — nada a fazer.")
@@ -105,6 +118,7 @@ def main():
     try:
         added = seed_articles(db)
         seed_catalog(db)
+        ensure_owner_admin(db)
         seed_admin(db)
         db.commit()
         print(f"{added} artigo(s) novo(s). Wiki: {db.query(WikiArticle).count()} | "

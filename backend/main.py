@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 import models
 import rag
 import schemas
-from database import Base, engine, get_db
+from database import Base, SessionLocal, engine, get_db
 from security import (
     create_access_token,
     get_current_user,
@@ -22,6 +22,14 @@ from security import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        import seed
+        db = SessionLocal()
+        try:
+            seed.ensure_owner_admin(db)
+            db.commit()
+        finally:
+            db.close()
     yield
 
 
