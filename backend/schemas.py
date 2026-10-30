@@ -7,6 +7,7 @@ from security import MAX_PASSWORD_BYTES
 OpeningMethod = Literal["Frontal", "Traseira"]
 Role = Literal["admin", "tecnico"]
 IngestType = Literal["url", "youtube", "search", "text"]
+AIProvider = Literal["gemini", "huggingface", "auto"]
 
 
 # ---------- Auth / Users ----------
@@ -131,10 +132,36 @@ class IngestOut(BaseModel):
     saved_count: int = 0
 
 
-# ---------- Assistente ----------
+# ---------- Configuração de Motor de IA (Gemini / Hugging Face) ----------
+class AISettingsIn(BaseModel):
+    provider: AIProvider = "auto"
+    gemini_model: Optional[str] = None
+    hf_model: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    hf_api_key: Optional[str] = None
+
+
+class AISettingsOut(BaseModel):
+    provider: str
+    gemini_model: str
+    hf_model: str
+    has_gemini_key: bool
+    has_hf_key: bool
+    available_models: dict
+
+
+# ---------- Assistente Conversacional ----------
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant", "bot"]
+    text: str = Field(min_length=1, max_length=4000)
+
+
 class AskIn(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
     use_web: bool = False
+    history: List[ChatTurn] = []
+    provider: Optional[AIProvider] = None
+    model: Optional[str] = None
 
 
 class SourceOut(BaseModel):
@@ -146,6 +173,8 @@ class SourceOut(BaseModel):
 class AskOut(BaseModel):
     answer: str
     mode: Literal["llm", "llm_web", "retrieval"]
+    model_used: Optional[str] = None
     sources: List[SourceOut]
     web_sources: List[WebSourceOut] = []
+    follow_up_suggestions: List[str] = []
     suggested_article: Optional[WikiBase] = None

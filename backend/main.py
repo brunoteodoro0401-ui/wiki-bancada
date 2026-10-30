@@ -346,7 +346,36 @@ def ingest(data: schemas.IngestIn, db: Session = Depends(get_db), _: models.User
     )
 
 
+# ====================== Configuração do Motor de IA ======================
+@app.get("/ai_settings", response_model=schemas.AISettingsOut)
+def get_ai_settings_endpoint(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    return rag.get_ai_settings(db)
+
+
+@app.put("/ai_settings", response_model=schemas.AISettingsOut)
+def update_ai_settings_endpoint(
+    data: schemas.AISettingsIn,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    return rag.save_ai_settings(
+        db=db,
+        provider=data.provider,
+        gemini_model=data.gemini_model,
+        hf_model=data.hf_model,
+        gemini_api_key=data.gemini_api_key,
+        hf_api_key=data.hf_api_key,
+    )
+
+
 # ====================== Assistente (RAG + Web) ======================
 @app.post("/ask", response_model=schemas.AskOut)
 def ask(data: schemas.AskIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return rag.answer(db, data.question, use_web=data.use_web)
+    return rag.answer(
+        db=db,
+        question=data.question,
+        use_web=data.use_web,
+        history=[t.model_dump() for t in data.history],
+        provider=data.provider,
+        model=data.model,
+    )

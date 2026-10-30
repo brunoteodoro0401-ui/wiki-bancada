@@ -47,6 +47,7 @@ def test_ask_validates_input(client, tech_headers):
 
 def test_ask_without_api_key_uses_retrieval(client, db, tech_headers, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("HF_API_KEY", raising=False)
     populate(db)
     r = client.post("/ask", json={"question": "calor na tela do iPhone 11"}, headers=tech_headers)
     assert r.status_code == 200
@@ -77,6 +78,60 @@ def test_ask_with_llm_sends_context_and_returns_sources(client, db, tech_headers
     body = r.json()
     assert body["mode"] == "llm" and body["answer"] == "Evite calor [1]."
     assert "mancha o LCD" in captured["prompt"] and "PERGUNTA" in captured["prompt"]
+    assert body["follow_up_suggestions"]
+
+
+def test_ask_conversational_history_carries_device_context(client, db, tech_headers, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake")
+    captured = {}
+
+    def fake_llm(prompt, **kw):
+        captured["prompt"] = prompt
+        return "Sim, no iPhone 11 você deve abrir pela frontal com cuidado no cabo flex [1]."
+
+    monkeypatch.setattr(rag, "call_llm", fake_llm)
+    populate(db)
+    # O usuário primeiro falou do iPhone 11, e na segunda pergunta diz apenas "e como faço para abrir ele?"
+    r = client.post(
+        "/ask",
+        json={
+            "question": "e como faço para abrir ele?",
+            "history": [
+                {"role": "user", "text": "Posso usar calor na tela do iPhone 11?"},
+                {"role": "bot", "text": "Evite calor excessivo no LCD do iPhone 11."},
+            ],
+        },
+        headers=tech_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["mode"] == "llm"
+    assert any("iPhone 11" in s["title"] for s in body["sources"])
+    assert "HISTÓRICO RECENTE DESTA CONVERSA NA BANCADA" in captured["prompt"]
+
+
+def test_ai_settings_get_and_put(client, admin_headers, tech_headers):
+    # Técnico pode ler configurações de modelos disponíveis
+    r_get = client.get("/ai_settings", headers=tech_headers)
+    assert r_get.status_code == 200
+    assert "gemini" in r_get.json()["available_models"]
+    assert "huggingface" in r_get.json()["available_models"]
+
+    # Técnico não pode alterar chaves/configuração global no servidor
+    assert client.put("/ai_settings", json={"provider": "huggingface"}, headers=tech_headers).status_code == 403
+
+    # Admin pode alterar provedor e modelo do Hugging Face
+    r_put = client.put(
+        "/ai_settings",
+        json={
+            "provider": "huggingface",
+            "hf_model": "Qwen/Qwen2.5-72B-Instruct",
+        },
+        headers=admin_headers,
+    )
+    assert r_put.status_code == 200
+    assert r_put.json()["provider"] == "huggingface"
+    assert r_put.json()["hf_model"] == "Qwen/Qwen2.5-72B-Instruct"
 
 
 def test_ask_falls_back_when_llm_fails(client, db, tech_headers, monkeypatch):
@@ -94,6 +149,7 @@ def test_ask_falls_back_when_llm_fails(client, db, tech_headers, monkeypatch):
 
 def test_sources_crud_and_ingest_text(client, db, admin_headers, tech_headers, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("HF_API_KEY", raising=False)
     # Técnico não pode criar fonte confiável
     assert client.post("/sources", json={"nome": "ClanGSM", "url_or_domain": "clangsm.com.br"}, headers=tech_headers).status_code == 403
     # Admin cria fonte confiável
