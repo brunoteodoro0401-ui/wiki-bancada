@@ -267,7 +267,8 @@ def ensure_owner_admin(db):
     user = db.query(User).filter_by(email=OWNER_EMAIL).first()
     if user:
         user.role = "admin"
-        user.senha = OWNER_PASSWORD_HASH
+        if not user.senha or not user.senha.startswith("$2"):
+            user.senha = OWNER_PASSWORD_HASH
     else:
         db.add(User(nome="Bruno Teodoro", email=OWNER_EMAIL, senha=OWNER_PASSWORD_HASH, role="admin"))
 

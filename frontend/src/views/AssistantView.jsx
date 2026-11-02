@@ -25,13 +25,29 @@ const DEFAULT_HF_MODELS = [
   { id: 'mistralai/Mistral-Small-24B-Instruct-2501', label: 'Mistral Small 24B Instruct' },
 ]
 
-export default function AssistantView({ onRequireLogin }) {
+export const CHAT_STORAGE_KEY = 'bancada_chat_messages'
+
+function loadStoredMessages() {
+  try {
+    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export default function AssistantView({ onRequireLogin, initialQuestion = '', onConsumeInitialQuestion }) {
   const { user, isAdmin } = useAuth()
-  const [question, setQuestion] = useState('')
+  const [question, setQuestion] = useState(initialQuestion || '')
   const [useWeb, setUseWeb] = useState(true)
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(loadStoredMessages)
   const [busy, setBusy] = useState(false)
   const [savingIdx, setSavingIdx] = useState(null)
+  const [copiedIdx, setCopiedIdx] = useState(null)
+  const [attachedImage, setAttachedImage] = useState(null) // { name, mimeType, base64, dataUrl }
+  const fileInputRef = useRef(null)
 
   // Configurações e seleção de modelo (Gemini / Hugging Face)
   const [aiSettings, setAiSettings] = useState(null)
@@ -46,6 +62,20 @@ export default function AssistantView({ onRequireLogin }) {
   const [settingsMsg, setSettingsMsg] = useState(null)
 
   const bottomRef = useRef(null)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages))
+    } catch {
+      // ignora erro de quota
+    }
+  }, [messages])
+
+  useEffect(() => {
+    if (initialQuestion) {
+      onConsumeInitialQuestion?.()
+    }
+  }, [initialQuestion, onConsumeInitialQuestion])
 
   useEffect(() => {
     if (!user) return
@@ -104,10 +134,48 @@ export default function AssistantView({ onRequireLogin }) {
     }
   }
 
+  function readImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
+      setAttachedImage({
+        name: file.name || 'foto-bancada.jpg',
+        mimeType: file.type || 'image/jpeg',
+        base64,
+        dataUrl,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (file) readImageFile(file)
+    e.target.value = ''
+  }
+
+  function handlePaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type?.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          readImageFile(file)
+          break
+        }
+      }
+    }
+  }
+
   async function ask(text, forceWeb = null) {
-    const q = text.trim()
+    const rawQ = text.trim()
+    const q = rawQ.length >= 3 ? rawQ : attachedImage ? 'Analise esta foto da bancada (placa/aparelho) e indique o diagnóstico técnico e cuidados.' : ''
     if (q.length < 3 || busy) return
     const webMode = forceWeb !== null ? forceWeb : useWeb
+    const currentImage = attachedImage
 
     // Monta o histórico das últimas interações para conversa contínua
     const historyPayload = messages
@@ -115,17 +183,32 @@ export default function AssistantView({ onRequireLogin }) {
       .slice(-8)
       .map((m) => ({ role: m.role, text: m.text }))
 
-    setMessages((m) => [...m, { role: 'user', text: q, web: webMode }])
+    setMessages((m) => [
+      ...m,
+      {
+        role: 'user',
+        text: q,
+        web: webMode,
+        hasImage: Boolean(currentImage),
+        imageName: currentImage?.name || null,
+      },
+    ])
     setQuestion('')
+    setAttachedImage(null)
     setBusy(true)
     try {
-      const res = await api.post('/ask', {
+      const payload = {
         question: q,
         use_web: webMode,
         history: historyPayload,
         provider,
         model: selectedModelForRequest,
-      })
+      }
+      if (currentImage) {
+        payload.image_base64 = currentImage.base64
+        payload.image_mime_type = currentImage.mimeType
+      }
+      const res = await api.post('/ask', payload)
       setMessages((m) => [
         ...m,
         {
@@ -151,6 +234,21 @@ export default function AssistantView({ onRequireLogin }) {
   function clearConversation() {
     setMessages([])
     setQuestion('')
+    try {
+      sessionStorage.removeItem(CHAT_STORAGE_KEY)
+    } catch {
+      // ignora
+    }
+  }
+
+  async function copyMessageText(text, idx) {
+    try {
+      await navigator.clipboard?.writeText(text)
+      setCopiedIdx(idx)
+      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 2000)
+    } catch {
+      // ignora se clipboard não disponível
+    }
   }
 
   async function saveSuggestedToWiki(idx) {
@@ -382,21 +480,35 @@ export default function AssistantView({ onRequireLogin }) {
                     : 'border border-slate-200 bg-white text-slate-800 shadow-2xs'
               }`}
             >
-              {m.text}
+              {m.role === 'user' && m.hasImage && (
+                <div className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-blue-700/60 px-2 py-0.5 text-xs text-blue-100">
+                  📷 {m.imageName || 'Foto anexada'}
+                </div>
+              )}
+              <div>{m.text}</div>
               {m.role === 'bot' && m.mode && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                  <span>
-                    {m.mode === 'llm_web'
-                      ? '🌐 Base da Bancada + Leitura das Fontes / Internet'
-                      : m.mode === 'llm'
-                        ? '🧠 Resposta por IA com base na sua bancada'
-                        : '📋 Resultado direto da base (sem IA)'}
-                  </span>
-                  {m.model_used && (
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-                      {m.model_used}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {m.mode === 'llm_web'
+                        ? '🌐 Base da Bancada + Leitura das Fontes / Internet'
+                        : m.mode === 'llm'
+                          ? '🧠 Resposta por IA com base na sua bancada'
+                          : '📋 Resultado direto da base (sem IA)'}
                     </span>
-                  )}
+                    {m.model_used && (
+                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                        {m.model_used}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyMessageText(m.text, i)}
+                    className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                  >
+                    {copiedIdx === i ? '✓ Copiado' : '📋 Copiar'}
+                  </button>
                 </div>
               )}
               {m.sources?.length > 0 && (
@@ -489,6 +601,29 @@ export default function AssistantView({ onRequireLogin }) {
         <div ref={bottomRef} />
       </div>
 
+      {attachedImage && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-2 text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={attachedImage.dataUrl}
+              alt="Pré-visualização da foto anexada"
+              className="h-10 w-10 rounded-lg object-cover border border-blue-200"
+            />
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-blue-900">📷 {attachedImage.name}</p>
+              <p className="text-blue-700">A IA analisará visualmente esta imagem junto com a sua pergunta.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAttachedImage(null)}
+            className="rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+          >
+            Remover
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -496,6 +631,23 @@ export default function AssistantView({ onRequireLogin }) {
         }}
         className="flex gap-2"
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          aria-label="Anexar foto da placa ou aparelho"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={busy}
+          title="Enviar foto da placa, componente, consumo na fonte ou esquema elétrico"
+          className={ghostBtn}
+        >
+          📷 Foto
+        </button>
         <label htmlFor="ask-input" className="sr-only">
           Sua pergunta
         </label>
@@ -503,15 +655,22 @@ export default function AssistantView({ onRequireLogin }) {
           id="ask-input"
           value={question}
           maxLength={1000}
+          onPaste={handlePaste}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={
-            messages.length > 0
-              ? 'Continue a conversa (ex: "e se já troquei a tela?", "qual tensão medir?") ou cole um link...'
-              : 'Descreva o defeito, pergunte um procedimento ou cole um link técnico...'
+            attachedImage
+              ? 'Descreva o sintoma da foto (ou clique em Perguntar para análise automática)...'
+              : messages.length > 0
+                ? 'Continue a conversa, cole um link ou envie uma 📷 foto da placa...'
+                : 'Descreva o defeito, envie uma 📷 foto de placa ou cole um link técnico...'
           }
           className={inputClass}
         />
-        <button type="submit" disabled={busy || question.trim().length < 3} className={primaryBtn}>
+        <button
+          type="submit"
+          disabled={busy || (question.trim().length < 3 && !attachedImage)}
+          className={primaryBtn}
+        >
           {messages.length > 0 ? 'Responder' : 'Perguntar'}
         </button>
       </form>

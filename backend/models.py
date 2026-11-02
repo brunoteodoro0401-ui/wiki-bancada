@@ -10,7 +10,7 @@ class User(Base):
     nome = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     senha = Column(String, nullable=False)
-    role = Column(String, default="user")
+    role = Column(String, default="tecnico")
 
 
 class Device(Base):

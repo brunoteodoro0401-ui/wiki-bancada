@@ -233,14 +233,31 @@ def create_compat(data: schemas.CompatBase, db: Session = Depends(get_db), _: mo
 def list_compat(
     device_id: int | None = None,
     part_id: int | None = None,
+    skip: int = 0,
+    limit: int = 200,
     db: Session = Depends(get_db),
 ):
-    q = db.query(models.Compatibility)
+    q = (
+        db.query(models.Compatibility, models.Device, models.Part)
+        .outerjoin(models.Device, models.Compatibility.device_id == models.Device.id)
+        .outerjoin(models.Part, models.Compatibility.part_id == models.Part.id)
+    )
     if device_id is not None:
         q = q.filter(models.Compatibility.device_id == device_id)
     if part_id is not None:
         q = q.filter(models.Compatibility.part_id == part_id)
-    return [_compat_out(c, db) for c in q.order_by(models.Compatibility.id).all()]
+    rows = q.order_by(models.Compatibility.id).offset(skip).limit(limit).all()
+    return [
+        {
+            "id": c.id,
+            "device_id": c.device_id,
+            "part_id": c.part_id,
+            "notas": c.notas,
+            "device_label": f"{d.marca} {d.modelo}" if d else None,
+            "part_nome": p.nome if p else None,
+        }
+        for c, d, p in rows
+    ]
 
 
 @app.put("/compatibilities/{compat_id}", response_model=schemas.CompatOut)
@@ -378,4 +395,6 @@ def ask(data: schemas.AskIn, db: Session = Depends(get_db), _: models.User = Dep
         history=[t.model_dump() for t in data.history],
         provider=data.provider,
         model=data.model,
+        image_base64=data.image_base64,
+        image_mime_type=data.image_mime_type,
     )

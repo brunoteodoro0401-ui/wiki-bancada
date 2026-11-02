@@ -162,6 +162,8 @@ class AskIn(BaseModel):
     history: List[ChatTurn] = []
     provider: Optional[AIProvider] = None
     model: Optional[str] = None
+    image_base64: Optional[str] = Field(default=None, max_length=6_000_000)
+    image_mime_type: Optional[str] = Field(default=None, max_length=60)
 
 
 class SourceOut(BaseModel):

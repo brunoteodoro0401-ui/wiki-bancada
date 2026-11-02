@@ -1,28 +1,43 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './auth'
 import AuthModal from './components/AuthModal'
+import UsersModal from './components/UsersModal'
 import WikiView from './views/WikiView'
 import DevicesView from './views/DevicesView'
 import PartsView from './views/PartsView'
 import AssistantView from './views/AssistantView'
 import SourcesView from './views/SourcesView'
+import ChecklistView from './views/ChecklistView'
 import { ghostBtn, inputClass } from './components/EntityFormModal'
 
 const TABS = [
   { id: 'wiki', label: 'Dicas' },
   { id: 'devices', label: 'Aparelhos' },
   { id: 'parts', label: 'Peças e compatibilidade' },
+  { id: 'checklist', label: 'Checklist de Bancada' },
   { id: 'sources', label: 'Fontes da IA' },
   { id: 'assistant', label: 'Assistente IA' },
 ]
 
 function Shell() {
-  const { user, ready, logout } = useAuth()
+  const { user, isAdmin, ready, logout } = useAuth()
   const [tab, setTab] = useState('wiki')
   const [query, setQuery] = useState('')
   const [showAuth, setShowAuth] = useState(false)
+  const [showUsers, setShowUsers] = useState(false)
+  const [assistantPrompt, setAssistantPrompt] = useState('')
 
   if (!ready) return <p className="p-8 text-slate-500">Carregando...</p>
+
+  function handleAskDevice(deviceLabel) {
+    setAssistantPrompt(`Quais os principais cuidados de abertura, peças compatíveis e defeitos crônicos do ${deviceLabel}?`)
+    setTab('assistant')
+  }
+
+  function handleAskFromChecklist(promptText) {
+    setAssistantPrompt(promptText)
+    setTab('assistant')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -31,7 +46,7 @@ function Shell() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold text-slate-900">🔧 Wiki de Bancada</h1>
             <div className="flex items-center gap-3">
-              {tab !== 'assistant' && tab !== 'sources' && (
+              {tab !== 'assistant' && tab !== 'sources' && tab !== 'checklist' && (
                 <>
                   <label htmlFor="search" className="sr-only">Buscar</label>
                   <input
@@ -49,6 +64,11 @@ function Shell() {
                   <span className="hidden sm:inline">
                     {user.nome} <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs">{user.role}</span>
                   </span>
+                  {isAdmin && (
+                    <button onClick={() => setShowUsers(true)} className={ghostBtn}>
+                      👥 Equipe
+                    </button>
+                  )}
                   <button onClick={logout} className={ghostBtn}>Sair</button>
                 </div>
               ) : (
@@ -75,13 +95,21 @@ function Shell() {
 
       <main className="mx-auto max-w-6xl px-4 py-8">
         {tab === 'wiki' && <WikiView search={query} />}
-        {tab === 'devices' && <DevicesView search={query} />}
+        {tab === 'devices' && <DevicesView search={query} onAskDevice={handleAskDevice} />}
         {tab === 'parts' && <PartsView search={query} />}
+        {tab === 'checklist' && <ChecklistView onAskAI={handleAskFromChecklist} />}
         {tab === 'sources' && <SourcesView />}
-        {tab === 'assistant' && <AssistantView onRequireLogin={() => setShowAuth(true)} />}
+        {tab === 'assistant' && (
+          <AssistantView
+            onRequireLogin={() => setShowAuth(true)}
+            initialQuestion={assistantPrompt}
+            onConsumeInitialQuestion={() => setAssistantPrompt('')}
+          />
+        )}
       </main>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
     </div>
   )
 }

@@ -8,9 +8,11 @@ Suporta:
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import html
+import ipaddress
 import json
 import os
 import re
+import socket
 import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -85,7 +87,7 @@ def _sync_db_settings(db: Session) -> None:
         rows = db.query(models.AppSetting).all()
         for r in rows:
             env_name = mapping.get(r.key)
-            if env_name and r.value and not os.getenv(env_name):
+            if env_name and r.value:
                 os.environ[env_name] = r.value.strip()
     except Exception:
         pass
@@ -379,8 +381,14 @@ def _call_huggingface(prompt: str, system_prompt: str, model_override: Optional[
     raise last_exc or RuntimeError("Falha ao consultar Hugging Face")
 
 
-def _call_gemini(prompt: str, system_prompt: str, model_override: Optional[str] = None) -> str:
-    """Chama a API REST do Gemini com thinkingBudget=0 (respostas em ~2s) e fallback automático."""
+def _call_gemini(
+    prompt: str,
+    system_prompt: str,
+    model_override: Optional[str] = None,
+    image_base64: Optional[str] = None,
+    image_mime_type: Optional[str] = None,
+) -> str:
+    """Chama a API REST do Gemini com thinkingBudget=0 (respostas em ~2s), suporte multimodal (visão) e fallback automático."""
     key = get_config("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY não configurada.")
@@ -388,6 +396,18 @@ def _call_gemini(prompt: str, system_prompt: str, model_override: Optional[str] 
     if preferred == "gemini-3.5-flash-lite" and not model_override:
         preferred = DEFAULT_MODEL
     candidates = [preferred, *[m for m in FALLBACK_MODELS if m != preferred]]
+
+    user_parts: List[Dict] = [{"text": prompt}]
+    if image_base64:
+        clean_b64 = re.sub(r"^data:[^;]+;base64,", "", image_base64.strip())
+        user_parts.append(
+            {
+                "inlineData": {
+                    "mimeType": (image_mime_type or "image/jpeg").strip(),
+                    "data": clean_b64,
+                }
+            }
+        )
 
     last_exc: Exception | None = None
     for model in candidates:
@@ -400,10 +420,10 @@ def _call_gemini(prompt: str, system_prompt: str, model_override: Optional[str] 
                 headers={"x-goog-api-key": key},
                 json={
                     "systemInstruction": {"parts": [{"text": system_prompt}]},
-                    "contents": [{"parts": [{"text": prompt}]}],
+                    "contents": [{"parts": user_parts}],
                     "generationConfig": gen_config,
                 },
-                timeout=16,
+                timeout=22 if image_base64 else 16,
             )
             if resp.status_code in (400, 404, 429, 503):
                 last_exc = RuntimeError(f"{model}: HTTP {resp.status_code}")
@@ -421,21 +441,39 @@ def call_llm(
     system_prompt: str = SYSTEM_PROMPT,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    image_base64: Optional[str] = None,
+    image_mime_type: Optional[str] = None,
 ) -> str:
-    """Roteador inteligente entre Google Gemini e Hugging Face (com fallback cruzado)."""
+    """Roteador inteligente entre Google Gemini e Hugging Face (com fallback cruzado e suporte a imagem)."""
     chosen_provider = provider or get_config("AI_PROVIDER", "auto")
+
+    # Se houver imagem anexada e chave Gemini disponível, prioriza o Gemini Multimodal
+    if image_base64 and get_config("GEMINI_API_KEY"):
+        return _call_gemini(
+            prompt,
+            system_prompt,
+            model_override=model if chosen_provider == "gemini" else None,
+            image_base64=image_base64,
+            image_mime_type=image_mime_type,
+        )
 
     if chosen_provider == "huggingface" and get_config("HF_API_KEY"):
         try:
             return _call_huggingface(prompt, system_prompt, model_override=model)
         except Exception:
             if get_config("GEMINI_API_KEY"):
-                return _call_gemini(prompt, system_prompt)
+                return _call_gemini(prompt, system_prompt, image_base64=image_base64, image_mime_type=image_mime_type)
             raise
 
     if get_config("GEMINI_API_KEY"):
         try:
-            return _call_gemini(prompt, system_prompt, model_override=model if chosen_provider == "gemini" else None)
+            return _call_gemini(
+                prompt,
+                system_prompt,
+                model_override=model if chosen_provider == "gemini" else None,
+                image_base64=image_base64,
+                image_mime_type=image_mime_type,
+            )
         except Exception:
             if get_config("HF_API_KEY"):
                 return _call_huggingface(prompt, system_prompt)
@@ -645,22 +683,79 @@ def fetch_youtube_content(url: str) -> Tuple[str, List[Dict[str, str]]]:
     return extracted, refs
 
 
+def is_safe_public_url(url: str) -> bool:
+    """Valida se a URL usa http/https e não aponta para IPs privados, loopback ou metadados de nuvem (anti-SSRF)."""
+    try:
+        parsed = urlparse(url.strip())
+        if parsed.scheme.lower() not in ("http", "https"):
+            return False
+        host = (parsed.hostname or "").strip().lower()
+        if not host or host in ("localhost", "0.0.0.0", "metadata.google.internal") or host.endswith((".local", ".internal")):
+            return False
+
+        def _ip_is_public(ip_str: str) -> bool:
+            ip = ipaddress.ip_address(ip_str)
+            return not (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
+            )
+
+        try:
+            return _ip_is_public(host)
+        except ValueError:
+            pass
+
+        try:
+            infos = socket.getaddrinfo(host, None)
+            for info in infos:
+                addr = info[4][0].split("%")[0]
+                if not _ip_is_public(addr):
+                    return False
+        except socket.gaierror:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def fetch_url_content(url: str, timeout: int = 8) -> Tuple[str, List[Dict[str, str]]]:
     """Lê o conteúdo textual de uma página web/fórum ou vídeo do YouTube."""
     if _extract_youtube_id(url):
         return fetch_youtube_content(url)
 
     clean_url = url.strip()
-    if not clean_url.startswith(("http://", "https://")):
+    if "://" not in clean_url:
         clean_url = "https://" + clean_url
+
+    if not is_safe_public_url(clean_url):
+        return (
+            f"URL bloqueada por política de segurança (endereço privado ou inválido): {clean_url}",
+            [],
+        )
 
     try:
         resp = httpx.get(
             clean_url,
             headers={"User-Agent": USER_AGENT, "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"},
             timeout=timeout,
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        if resp.is_redirect and resp.headers.get("location"):
+            redirect_target = resp.headers["location"]
+            if redirect_target.startswith("/"):
+                parsed_orig = urlparse(clean_url)
+                redirect_target = f"{parsed_orig.scheme}://{parsed_orig.netloc}{redirect_target}"
+            if is_safe_public_url(redirect_target):
+                resp = httpx.get(
+                    redirect_target,
+                    headers={"User-Agent": USER_AGENT, "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"},
+                    timeout=timeout,
+                    follow_redirects=False,
+                )
         resp.raise_for_status()
         title_match = re.search(r"<title[^>]*>(.*?)</title>", resp.text, flags=re.S | re.I)
         title = _clean_html_text(title_match.group(1)) if title_match else clean_url
@@ -883,6 +978,8 @@ def answer(
     history: Optional[List[Dict]] = None,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    image_base64: Optional[str] = None,
+    image_mime_type: Optional[str] = None,
 ) -> Dict:
     _sync_db_settings(db)
     contextual_q = build_contextual_query(question, history)
@@ -892,9 +989,17 @@ def answer(
     # Detecta se o usuário colou algum link direto na pergunta
     urls_in_question = re.findall(r"https?://[^\s)>]+", question)
     has_ai_key = bool(get_config("GEMINI_API_KEY") or get_config("HF_API_KEY"))
+    has_image = bool(image_base64 and image_base64.strip())
+    vision_prefix = (
+        "FOTO DE BANCADA ANEXADA PELO TÉCNICO: Inspecione atentamente a imagem enviada "
+        "(placa, componentes, oxidação, malhas/trilhas, display, esquema elétrico ou consumo na fonte) "
+        "e integre sua análise visual ao diagnóstico abaixo.\n\n"
+        if has_image
+        else ""
+    )
     active_model_label = model or (
         get_config("HF_MODEL", DEFAULT_HF_MODEL)
-        if (provider or get_config("AI_PROVIDER")) == "huggingface"
+        if (provider or get_config("AI_PROVIDER")) == "huggingface" and not has_image
         else get_config("GEMINI_MODEL", DEFAULT_MODEL)
     )
 
@@ -946,6 +1051,7 @@ def answer(
         hist_block = format_history_block(history)
 
         full_prompt = (
+            f"{vision_prefix}"
             f"BASE INTERNA DA BANCADA:\n{local_ctx}\n\n"
             f"FONTES CONFIÁVEIS PREFERENCIAIS DO TÉCNICO:\n{trusted_names or 'iFixit, ClanGSM, GSMHosting, YouTube'}\n\n"
             f"CONTEÚDO LIDO DAS FONTES / INTERNET:\n{web_ctx}\n\n"
@@ -955,7 +1061,14 @@ def answer(
 
         if has_ai_key:
             try:
-                reply = call_llm(full_prompt, system_prompt=HYBRID_WEB_SYSTEM_PROMPT, provider=provider, model=model)
+                reply = call_llm(
+                    full_prompt,
+                    system_prompt=HYBRID_WEB_SYSTEM_PROMPT,
+                    provider=provider,
+                    model=model,
+                    image_base64=image_base64,
+                    image_mime_type=image_mime_type,
+                )
                 suggested = build_fast_suggestion(contextual_q, reply)
                 follow_ups = build_follow_up_suggestions(question, reply, contextual_q)
                 return {
@@ -987,7 +1100,7 @@ def answer(
                 "suggested_article": build_fast_suggestion(contextual_q, joined),
             }
 
-    if not docs:
+    if not docs and not has_image:
         return {
             "answer": "A base ainda não tem informação sobre isso. Proceda com cautela e, "
                       "se resolver o caso, cadastre a dica na Wiki (ou ative a opção 'Buscar também na Internet').",
@@ -1001,7 +1114,14 @@ def answer(
 
     if has_ai_key:
         try:
-            reply = call_llm(build_prompt(question, docs, history=history), provider=provider, model=model)
+            prompt_text = f"{vision_prefix}{build_prompt(question, docs, history=history)}"
+            reply = call_llm(
+                prompt_text,
+                provider=provider,
+                model=model,
+                image_base64=image_base64,
+                image_mime_type=image_mime_type,
+            )
             return {
                 "answer": reply,
                 "mode": "llm",

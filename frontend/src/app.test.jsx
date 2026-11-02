@@ -14,12 +14,15 @@ vi.mock('./api', () => {
 import api from './api'
 import { AuthProvider } from './auth'
 import AuthModal from './components/AuthModal'
+import UsersModal from './components/UsersModal'
 import ArticleCard from './components/ArticleCard'
 import { DeviceCard } from './views/DevicesView'
+import ChecklistView from './views/ChecklistView'
 
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  sessionStorage.clear()
   vi.clearAllMocks()
 })
 
@@ -92,5 +95,57 @@ describe('AuthModal', () => {
     expect(screen.queryByLabelText('Nome')).toBeNull()
     await userEvent.click(screen.getByText('Não tem conta? Cadastre-se'))
     expect(screen.getByLabelText('Nome')).toBeTruthy()
+  })
+})
+
+describe('UsersModal', () => {
+  it('lista usuários e permite promover técnico a admin', async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id: 1, nome: 'Bruno Admin', email: 'bruno@example.com', role: 'admin' },
+        { id: 2, nome: 'Carlos Tech', email: 'carlos@example.com', role: 'tecnico' },
+      ],
+    })
+    api.put.mockResolvedValue({
+      data: { id: 2, nome: 'Carlos Tech', email: 'carlos@example.com', role: 'admin' },
+    })
+
+    const onClose = vi.fn()
+    render(
+      <AuthProvider>
+        <UsersModal onClose={onClose} />
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByText('Carlos Tech')).toBeTruthy()
+    const promoteBtn = screen.getByRole('button', { name: 'Tornar admin' })
+    await userEvent.click(promoteBtn)
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith('/users/2/role', { role: 'admin' }),
+    )
+  })
+})
+
+describe('ChecklistView', () => {
+  it('permite marcar defeito, salvar no histórico e enviar diagnóstico para a IA', async () => {
+    api.get.mockResolvedValue({
+      data: [{ id: 1, marca: 'Apple', modelo: 'iPhone 13 Pro', opening_method: 'Frontal', has_flex_cable: true }],
+    })
+    const onAskAI = vi.fn()
+    render(<ChecklistView onAskAI={onAskAI} />)
+
+    await userEvent.type(screen.getByLabelText('Aparelho / Modelo'), 'Apple iPhone 13 Pro')
+    expect(await screen.findByText(/Alerta de Bancada/i)).toBeTruthy()
+
+    const biometriaGroup = screen.getByRole('group', { name: 'Biometria (Digital) / Face ID' })
+    const defeitoBtn = biometriaGroup.querySelectorAll('button')[1]
+    await userEvent.click(defeitoBtn)
+
+    await userEvent.click(screen.getByRole('button', { name: /Salvar no Histórico Local/i }))
+    expect(screen.getByText(/1 item\(ns\) com defeito/i)).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: /Diagnosticar \(1 defeito\) na IA/i }))
+    expect(onAskAI).toHaveBeenCalledTimes(1)
+    expect(onAskAI.mock.calls[0][0]).toMatch(/Biometria \(Digital\) \/ Face ID/i)
   })
 })

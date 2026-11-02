@@ -14,16 +14,31 @@ const FIELDS = [
   { name: 'tags', label: 'Tags (separadas por vírgula)' },
 ]
 
+const CATEGORIES = [
+  'Todas',
+  'Procedimento',
+  'Diagnóstico',
+  'Microsoldagem',
+  'Alerta Químico',
+  'Compatibilidade',
+  'Resolução de Problemas',
+]
+
 const clean = (v) => ({ ...v, category: v.category || null, tags: v.tags || null })
 
 export default function WikiView({ search }) {
   const { isAdmin } = useAuth()
   const { items, loading, error, reload } = useResource('/wiki_articles')
+  const [selectedCategory, setSelectedCategory] = useState('Todas')
   const [editing, setEditing] = useState(null) // null | {} (novo) | artigo
   const [showImporter, setShowImporter] = useState(false)
   const [actionError, setActionError] = useState(null)
 
-  const filtered = filterBySearch(items, search, ['target_device', 'category', 'ai_context_text', 'tags'])
+  const bySearch = filterBySearch(items, search, ['target_device', 'category', 'ai_context_text', 'tags'])
+  const filtered =
+    selectedCategory === 'Todas'
+      ? bySearch
+      : bySearch.filter((a) => (a.category || '').toLowerCase() === selectedCategory.toLowerCase())
 
   async function save(values) {
     if (editing.id) await api.put(`/wiki_articles/${editing.id}`, clean(values))
@@ -61,6 +76,22 @@ export default function WikiView({ search }) {
             </button>
           </div>
         )}
+      </div>
+      <div className="mb-4 flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por categoria">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setSelectedCategory(cat)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              selectedCategory === cat
+                ? 'bg-slate-900 text-white'
+                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
       {loading && <p className="text-slate-500">Carregando...</p>}
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}

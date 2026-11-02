@@ -176,3 +176,93 @@ def test_sources_crud_and_ingest_text(client, db, admin_headers, tech_headers, m
 
     # Remove a fonte
     assert client.delete(f"/sources/{sid}", headers=admin_headers).status_code == 200
+
+
+def test_ssrf_protection_blocks_private_and_local_urls():
+    assert not rag.is_safe_public_url("http://127.0.0.1:8000/docs")
+    assert not rag.is_safe_public_url("http://localhost:8000/users")
+    assert not rag.is_safe_public_url("http://169.254.169.254/latest/meta-data/")
+    assert not rag.is_safe_public_url("http://192.168.1.10/admin")
+    assert not rag.is_safe_public_url("http://10.0.0.5/internal")
+    assert not rag.is_safe_public_url("file:///etc/passwd")
+    assert rag.is_safe_public_url("https://pt.ifixit.com/Guide")
+
+    txt, refs = rag.fetch_url_content("http://127.0.0.1:8000/users")
+    assert "bloqueada por política de segurança" in txt
+    assert refs == []
+
+
+def test_call_llm_cross_provider_fallback(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-gemini")
+    monkeypatch.setenv("HF_API_KEY", "fake-hf")
+
+    def fail_gemini(*args, **kwargs):
+        raise RuntimeError("Gemini quota exceeded")
+
+    def ok_hf(prompt, system_prompt, model_override=None):
+        return "Resposta via Hugging Face fallback"
+
+    monkeypatch.setattr(rag, "_call_gemini", fail_gemini)
+    monkeypatch.setattr(rag, "_call_huggingface", ok_hf)
+
+    out = rag.call_llm("Teste de fallback", provider="auto")
+    assert out == "Resposta via Hugging Face fallback"
+
+
+def test_ingest_url_and_search_modes(client, admin_headers, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("HF_API_KEY", raising=False)
+
+    monkeypatch.setattr(
+        rag,
+        "fetch_url_content",
+        lambda url, timeout=8: (
+            "Fonte: Guia iFixit\nConteúdo: Para abrir o iPhone 12 aqueça a borda e cuidado com o flex esquerdo.",
+            [{"title": "Guia iFixit iPhone 12", "url": url}],
+        ),
+    )
+
+    r_url = client.post(
+        "/ingest",
+        json={
+            "source_type": "url",
+            "content": "https://pt.ifixit.com/Guide/iPhone+12",
+            "target_device_hint": "iPhone 12",
+            "auto_save": True,
+        },
+        headers=admin_headers,
+    )
+    assert r_url.status_code == 200
+    body = r_url.json()
+    assert body["saved_count"] == 1
+    assert body["source_references"][0]["title"] == "Guia iFixit iPhone 12"
+
+
+def test_ask_with_image_base64_calls_multimodal_llm(client, db, tech_headers, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-gemini")
+    captured = {}
+
+    def fake_llm(prompt, **kw):
+        captured["prompt"] = prompt
+        captured["image_base64"] = kw.get("image_base64")
+        captured["image_mime_type"] = kw.get("image_mime_type")
+        return "Identifiquei oxidação próxima ao conector FPC da subplaca."
+
+    monkeypatch.setattr(rag, "call_llm", fake_llm)
+    r = client.post(
+        "/ask",
+        json={
+            "question": "Analise esta foto da placa oxidada",
+            "use_web": False,
+            "image_base64": "aGVsbG8=",
+            "image_mime_type": "image/jpeg",
+        },
+        headers=tech_headers,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["mode"] == "llm"
+    assert "oxidação" in data["answer"]
+    assert captured["image_base64"] == "aGVsbG8="
+    assert captured["image_mime_type"] == "image/jpeg"
+    assert "FOTO DE BANCADA ANEXADA" in captured["prompt"]
