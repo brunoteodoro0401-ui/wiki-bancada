@@ -56,7 +56,34 @@ def test_wiki_validation(client, admin_headers):
     assert client.post("/wiki_articles", json={"target_device": "X"}, headers=admin_headers).status_code == 422
 
 
-def test_service_orders_lifecycle_and_restore(client):
+def test_service_orders_require_login(client):
+    for method, url in [
+        ("get", "/service_orders"),
+        ("get", "/service_orders/storage_info"),
+        ("post", "/service_orders"),
+        ("put", "/service_orders/1"),
+        ("delete", "/service_orders/1"),
+        ("post", "/service_orders/restore"),
+    ]:
+        kwargs = {"json": {}} if method in ("post", "put") else {}
+        assert getattr(client, method)(url, **kwargs).status_code == 401, (method, url)
+
+
+def test_service_orders_number_not_reused_after_delete(client, tech_headers):
+    client.headers.update(tech_headers)
+    ids = []
+    for _ in range(2):
+        r = client.post("/service_orders", json={"device_model": "iPhone 11"})
+        assert r.status_code == 201
+        ids.append(r.json())
+    assert [o["os_number"] for o in ids] == ["OS-0001", "OS-0002"]
+    assert client.delete(f"/service_orders/{ids[0]['id']}").status_code == 200
+    r = client.post("/service_orders", json={"device_model": "iPhone 12"})
+    assert r.json()["os_number"] == "OS-0003"
+
+
+def test_service_orders_lifecycle_and_restore(client, tech_headers):
+    client.headers.update(tech_headers)
     # 1) Abre uma O.S. com IMEI
     r_create = client.post(
         "/service_orders",

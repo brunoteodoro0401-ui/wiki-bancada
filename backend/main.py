@@ -485,12 +485,17 @@ def _persist_os_file_on_disk(order_dict: dict) -> None:
 
 
 def _next_os_number(db: Session) -> str:
-    count = db.query(models.ServiceOrder).count()
-    return f"OS-{count + 1:04d}"
+    # Usa o maior número já existente (e não a contagem) para não repetir após exclusões.
+    highest = 0
+    for (num,) in db.query(models.ServiceOrder.os_number).all():
+        m = re.fullmatch(r"OS-(\d+)", (num or "").strip())
+        if m:
+            highest = max(highest, int(m.group(1)))
+    return f"OS-{highest + 1:04d}"
 
 
 @app.get("/service_orders/storage_info")
-def get_os_storage_info(db: Session = Depends(get_db)):
+def get_os_storage_info(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     folder = _get_os_storage_dir()
     total = db.query(models.ServiceOrder).count()
     return {
@@ -503,6 +508,7 @@ def get_os_storage_info(db: Session = Depends(get_db)):
 def list_service_orders(
     status: str | None = None,
     db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
 ):
     q = db.query(models.ServiceOrder)
     if status:
@@ -512,7 +518,7 @@ def list_service_orders(
 
 
 @app.post("/service_orders", response_model=schemas.ServiceOrderOut, status_code=201)
-def create_service_order(data: schemas.ServiceOrderIn, db: Session = Depends(get_db)):
+def create_service_order(data: schemas.ServiceOrderIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
     os_num = (data.os_number or "").strip() or _next_os_number(db)
     closed_at = data.closed_at or (now_str if data.status == "encerrada" else None)
@@ -543,7 +549,7 @@ def create_service_order(data: schemas.ServiceOrderIn, db: Session = Depends(get
 
 
 @app.put("/service_orders/{order_id}", response_model=schemas.ServiceOrderOut)
-def update_service_order(order_id: int, data: schemas.ServiceOrderIn, db: Session = Depends(get_db)):
+def update_service_order(order_id: int, data: schemas.ServiceOrderIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     obj = _get_or_404(db, models.ServiceOrder, order_id, "Ordem de Serviço")
     now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
     if data.os_number and data.os_number.strip():
@@ -573,7 +579,7 @@ def update_service_order(order_id: int, data: schemas.ServiceOrderIn, db: Sessio
 
 
 @app.delete("/service_orders/{order_id}")
-def delete_service_order(order_id: int, db: Session = Depends(get_db)):
+def delete_service_order(order_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     obj = _get_or_404(db, models.ServiceOrder, order_id, "Ordem de Serviço")
     db.delete(obj)
     db.commit()
@@ -581,7 +587,7 @@ def delete_service_order(order_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/service_orders/restore")
-def restore_service_orders(data: schemas.ServiceOrderRestoreIn, db: Session = Depends(get_db)):
+def restore_service_orders(data: schemas.ServiceOrderRestoreIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     restored = 0
     now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
     for item in data.orders:
