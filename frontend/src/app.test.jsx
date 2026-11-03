@@ -18,6 +18,7 @@ import UsersModal from './components/UsersModal'
 import ArticleCard from './components/ArticleCard'
 import { DeviceCard } from './views/DevicesView'
 import ChecklistView from './views/ChecklistView'
+import PartsView from './views/PartsView'
 
 afterEach(() => {
   cleanup()
@@ -180,5 +181,49 @@ describe('ChecklistView', () => {
     rerender(<ChecklistView onAskAI={() => {}} loggedIn />)
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/service_orders'))
     expect(screen.queryByRole('note')).toBeNull()
+  })
+})
+
+describe('PartsView', () => {
+  it('busca pelo nome da peça e mostra os modelos compatíveis', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/parts') {
+        return Promise.resolve({ data: [
+          { id: 1, nome: 'Bateria EB-BA505ABU', categoria: 'Bateria' },
+          { id: 2, nome: 'Bateria JK50', categoria: 'Bateria' },
+        ] })
+      }
+      if (url === '/devices') {
+        return Promise.resolve({ data: [
+          { id: 1, marca: 'Samsung', modelo: 'Galaxy A20' },
+          { id: 2, marca: 'Samsung', modelo: 'Galaxy A50' },
+          { id: 3, marca: 'Motorola', modelo: 'Moto G9 Play' },
+        ] })
+      }
+      if (url === '/compatibilities') {
+        return Promise.resolve({ data: [
+          { id: 1, part_id: 1, device_id: 1, notas: null, device_label: 'Samsung Galaxy A20' },
+          { id: 2, part_id: 1, device_id: 2, notas: null, device_label: 'Samsung Galaxy A50' },
+          { id: 3, part_id: 2, device_id: 3, notas: null, device_label: 'Motorola Moto G9 Play' },
+        ] })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    render(<AuthProvider><PartsView /></AuthProvider>)
+    expect(await screen.findByText('Bateria JK50')).toBeTruthy()
+    expect(screen.getByText('Bateria EB-BA505ABU')).toBeTruthy()
+
+    await userEvent.type(screen.getByLabelText('Buscar peça ou modelo'), 'EB-BA505ABU')
+    expect(screen.queryByText('Bateria JK50')).toBeNull()
+    expect(screen.getByText('Galaxy A20')).toBeTruthy()
+    expect(screen.getByText('Galaxy A50')).toBeTruthy()
+    expect(screen.getByText(/Compatível com 2 modelo/)).toBeTruthy()
+
+    // Buscar pelo modelo encontra a peça correspondente
+    await userEvent.clear(screen.getByLabelText('Buscar peça ou modelo'))
+    await userEvent.type(screen.getByLabelText('Buscar peça ou modelo'), 'g9 play')
+    expect(screen.getByText('Bateria JK50')).toBeTruthy()
+    expect(screen.queryByText('Bateria EB-BA505ABU')).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterBySearch, normalize, parseTags } from './utils'
+import { buildPartGroups, filterBySearch, linkMatchesTerms, normalize, parseTags, searchPartGroups, searchTerms } from './utils'
 import { createRarBackupBytes, generateOsPdfBytes, parseBackupFile } from './osBackupAndPdf'
 
 describe('parseTags', () => {
@@ -68,5 +68,60 @@ describe('osBackupAndPdf', () => {
     expect(restored).toHaveLength(1)
     expect(restored[0].osNumber).toBe('OS-0042')
     expect(restored[0].imei).toBe('354891101234567')
+  })
+})
+
+describe('compatibilidade de peças', () => {
+  const devices = [
+    { id: 1, marca: 'Samsung', modelo: 'Galaxy A12' },
+    { id: 2, marca: 'Samsung', modelo: 'Galaxy M12' },
+    { id: 3, marca: 'Motorola', modelo: 'Moto G20' },
+  ]
+  const parts = [
+    { id: 10, nome: 'Bateria EB-BA217ABY / WT-S-N28', categoria: 'Bateria' },
+    { id: 11, nome: 'Tela Frontal Galaxy A12 — sem aro', categoria: 'Display' },
+    { id: 12, nome: 'Bateria JK50', categoria: 'Bateria' },
+    { id: 13, nome: 'Peça sem vínculo', categoria: 'Flex' },
+  ]
+  const compats = [
+    { id: 1, device_id: 1, part_id: 10, notas: 'Mesma célula', device_label: 'Samsung Galaxy A12' },
+    { id: 2, device_id: 2, part_id: 10, notas: 'Mesma célula', device_label: 'Samsung Galaxy M12' },
+    { id: 3, device_id: 1, part_id: 11, notas: 'Encaixa também no A02', device_label: 'Samsung Galaxy A12' },
+    { id: 4, device_id: 3, part_id: 12, notas: null, device_label: 'Motorola Moto G20' },
+  ]
+  const groups = buildPartGroups(parts, compats, devices)
+
+  it('agrupa por peça, lista modelos e deduz marcas e nota compartilhada', () => {
+    const bateria = groups.find((g) => g.id === 10)
+    expect(bateria.links.map((l) => l.modelo)).toEqual(['Galaxy A12', 'Galaxy M12'])
+    expect(bateria.brands).toEqual(['Samsung'])
+    expect(bateria.sharedNote).toBe('Mesma célula')
+    expect(groups.find((g) => g.id === 12).sharedNote).toBe('')
+    expect(groups.find((g) => g.id === 13).links).toEqual([])
+  })
+
+  it('busca pelo nome/código da peça e mostra os modelos compatíveis', () => {
+    const r = searchPartGroups(groups, 'eb-ba217aby')
+    expect(r.map((g) => g.id)).toEqual([10])
+    expect(searchPartGroups(groups, 'bateria').map((g) => g.id).sort()).toEqual([10, 12])
+  })
+
+  it('busca pelo modelo do aparelho (sem acento/caixa) e exige todos os termos', () => {
+    expect(searchPartGroups(groups, 'GALAXY a12').map((g) => g.id).sort()).toEqual([10, 11])
+    expect(searchPartGroups(groups, 'bateria galaxy a12').map((g) => g.id)).toEqual([10])
+    expect(searchPartGroups(groups, 'xyz')).toEqual([])
+  })
+
+  it('combina com filtros de marca e tipo e põe primeiro quem tem o termo no nome', () => {
+    expect(searchPartGroups(groups, '', { brand: 'Motorola' }).map((g) => g.id)).toEqual([12])
+    expect(searchPartGroups(groups, '', { category: 'Display' }).map((g) => g.id)).toEqual([11])
+    expect(searchPartGroups(groups, 'a12')[0].id).toBe(11)
+  })
+
+  it('destaca o modelo que casa com a busca', () => {
+    const terms = searchTerms('m12')
+    const bateria = groups.find((g) => g.id === 10)
+    expect(bateria.links.map((l) => linkMatchesTerms(l, terms))).toEqual([false, true])
+    expect(linkMatchesTerms(bateria.links[0], [])).toBe(false)
   })
 })

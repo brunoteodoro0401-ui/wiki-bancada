@@ -46,7 +46,7 @@ function Shell() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold text-slate-900">🔧 Wiki de Bancada</h1>
             <div className="flex items-center gap-3">
-              {tab !== 'assistant' && tab !== 'sources' && tab !== 'checklist' && (
+              {tab !== 'assistant' && tab !== 'sources' && tab !== 'checklist' && tab !== 'parts' && (
                 <>
                   <label htmlFor="search" className="sr-only">Buscar</label>
                   <input
@@ -96,7 +96,7 @@ function Shell() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         {tab === 'wiki' && <WikiView search={query} />}
         {tab === 'devices' && <DevicesView search={query} onAskDevice={handleAskDevice} />}
-        {tab === 'parts' && <PartsView search={query} />}
+        {tab === 'parts' && <PartsView />}
         {tab === 'checklist' && <ChecklistView onAskAI={handleAskFromChecklist} loggedIn={!!user} />}
         {tab === 'sources' && <SourcesView />}
         {tab === 'assistant' && (

@@ -33,6 +33,7 @@ async def lifespan(_: FastAPI):
             seed.seed_articles(db)
             seed.seed_catalog(db)
             seed.seed_extended_knowledge(db)
+            seed.seed_compat_master_list(db)
             seed.seed_trusted_sources(db)
             seed.ensure_owner_admin(db)
             db.commit()
@@ -129,7 +130,7 @@ def create_device(data: schemas.DeviceBase, db: Session = Depends(get_db), _: mo
 
 
 @app.get("/devices", response_model=List[schemas.DeviceOut])
-def list_devices(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
+def list_devices(skip: int = 0, limit: int = 2000, db: Session = Depends(get_db)):
     return db.query(models.Device).order_by(models.Device.marca, models.Device.modelo).offset(skip).limit(limit).all()
 
 
@@ -168,7 +169,7 @@ def create_part(data: schemas.PartBase, db: Session = Depends(get_db), _: models
 
 
 @app.get("/parts", response_model=List[schemas.PartOut])
-def list_parts(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
+def list_parts(skip: int = 0, limit: int = 2000, db: Session = Depends(get_db)):
     return db.query(models.Part).order_by(models.Part.categoria, models.Part.nome).offset(skip).limit(limit).all()
 
 

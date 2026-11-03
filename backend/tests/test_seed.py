@@ -60,3 +60,29 @@ def test_ensure_owner_admin_preserves_existing_custom_password(db):
     db.commit()
     db.refresh(owner)
     assert verify_password("nova-senha-segura-999", owner.senha)
+
+
+def test_compat_master_list_is_complete_and_idempotent(db):
+    import seed_compat_master as master
+
+    first = seed.seed_compat_master_list(db)
+    db.commit()
+    assert first["parts"] == len(master.MASTER_GROUPS) == 61
+    assert first["devices"] > 50 and first["compatibilities"] > 150
+
+    # Busca por nome de peça devolve os modelos da lista mestra
+    part = db.query(models.Part).filter_by(nome="Bateria EB-BA505ABU").one()
+    links = db.query(models.Compatibility).filter_by(part_id=part.id).all()
+    labels = sorted(db.get(models.Device, c.device_id).modelo for c in links)
+    assert labels == ["Galaxy A20", "Galaxy A30", "Galaxy A30s", "Galaxy A50"]
+
+    # Nota geral e nota por modelo
+    a31 = db.query(models.Part).filter_by(nome="Bateria EB-BA315ABY").one()
+    assert "5G" in db.query(models.Compatibility).filter_by(part_id=a31.id).first().notas
+    g20 = db.query(models.Device).filter_by(modelo="Moto G20").one()
+    screen = db.query(models.Part).filter_by(nome="Tela, Tampa Traseira e Chassi Moto G10 / G20 / G30").one()
+    assert "90Hz" in db.query(models.Compatibility).filter_by(part_id=screen.id, device_id=g20.id).one().notas
+
+    # Rodar de novo não duplica nada
+    second = seed.seed_compat_master_list(db)
+    assert second == {"devices": 0, "parts": 0, "compatibilities": 0, "articles": 0}

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { useResource } from '../hooks'
-import { filterBySearch } from '../utils'
-import EntityFormModal, { inputClass, primaryBtn } from '../components/EntityFormModal'
+import { buildPartGroups, linkMatchesTerms, searchPartGroups, searchTerms } from '../utils'
+import EntityFormModal, { ghostBtn, inputClass, primaryBtn } from '../components/EntityFormModal'
 
 const PART_FIELDS = [
   { name: 'nome', label: 'Nome da peça', required: true },
@@ -398,21 +398,38 @@ function CompatImportModal({ onClose, onSaved }) {
   )
 }
 
-export default function PartsView({ search }) {
+export default function PartsView() {
   const { isAdmin } = useAuth()
   const parts = useResource('/parts')
   const devices = useResource('/devices')
-  const [deviceFilter, setDeviceFilter] = useState('')
-  const compatPath = deviceFilter ? `/compatibilities?device_id=${deviceFilter}` : '/compatibilities'
-  const compats = useResource(compatPath)
+  const compats = useResource('/compatibilities')
 
+  const [query, setQuery] = useState('')
+  const [brand, setBrand] = useState('')
+  const [category, setCategory] = useState('')
+  const [expanded, setExpanded] = useState({})
+  const [managing, setManaging] = useState({})
   const [editingPart, setEditingPart] = useState(null)
   const [editingCompat, setEditingCompat] = useState(null)
   const [showWebImport, setShowWebImport] = useState(false)
   const [actionError, setActionError] = useState(null)
 
-  const filteredParts = filterBySearch(parts.items, search, ['nome', 'categoria'])
-  const filteredCompats = filterBySearch(compats.items, search, ['device_label', 'part_nome', 'notas'])
+  const groups = useMemo(
+    () => buildPartGroups(parts.items, compats.items, devices.items),
+    [parts.items, compats.items, devices.items],
+  )
+  const brandOptions = useMemo(() => [...new Set(groups.flatMap((g) => g.brands))].sort(), [groups])
+  const categoryOptions = useMemo(
+    () => [...new Set(groups.map((g) => g.categoria).filter(Boolean))].sort(),
+    [groups],
+  )
+  const terms = searchTerms(query)
+  const results = useMemo(
+    () => searchPartGroups(groups, query, { brand, category }),
+    [groups, query, brand, category],
+  )
+  const loading = parts.loading || compats.loading || devices.loading
+  const hasFilters = Boolean(query || brand || category)
 
   const compatFields = [
     {
@@ -455,85 +472,198 @@ export default function PartsView({ search }) {
     }
   }
 
+  function clearFilters() {
+    setQuery('')
+    setBrand('')
+    setCategory('')
+  }
+
+  const chipBase = 'rounded-full border px-3 py-1 text-xs font-medium transition'
+  const chipOn = 'border-blue-600 bg-blue-600 text-white'
+  const chipOff = 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       {actionError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">{actionError}</p>}
 
-      <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Compatibilidades ({filteredCompats.length})</h2>
-            <p className="text-xs text-slate-500">
-              Consulte telas, baterias e subplacas equivalentes entre diferentes modelos ou importe novas tabelas da internet.
+            <h2 className="text-xl font-semibold text-slate-900">Peças e Compatibilidade</h2>
+            <p className="text-sm text-slate-500">
+              Digite o nome ou código da peça (ex.: <em>EB-BA505ABU</em>, <em>bateria JK50</em>) ou o modelo do aparelho
+              (ex.: <em>Galaxy A12</em>) e veja tudo que é compatível.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <label htmlFor="compat-device" className="sr-only">Filtrar por aparelho</label>
-            <select id="compat-device" value={deviceFilter} onChange={(e) => setDeviceFilter(e.target.value)} className={`${inputClass} w-auto`}>
-              <option value="">Todos os aparelhos ({devices.items.length})</option>
-              {devices.items.map((d) => <option key={d.id} value={d.id}>{d.marca} {d.modelo}</option>)}
-            </select>
-            {isAdmin && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowWebImport(true)}
-                  className="rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                  🌐 Buscar na Internet (IA)
-                </button>
-                <button onClick={() => setEditingCompat({})} className={primaryBtn}>+ Compatibilidade</button>
-              </>
-            )}
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowWebImport(true)}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                🌐 Buscar na Internet (IA)
+              </button>
+              <button onClick={() => setEditingCompat({})} className={ghostBtn}>+ Compatibilidade</button>
+              <button onClick={() => setEditingPart({})} className={primaryBtn}>+ Nova peça</button>
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <label htmlFor="parts-search" className="sr-only">Buscar peça ou modelo</label>
+          <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          <input
+            id="parts-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar peça, código ou modelo… ex.: bateria EB-BA505ABU, tela A12, Poco X3"
+            className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-base shadow-2xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por marca">
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Marca</span>
+            <button type="button" onClick={() => setBrand('')} className={`${chipBase} ${brand === '' ? chipOn : chipOff}`}>Todas</button>
+            {brandOptions.map((b) => (
+              <button key={b} type="button" onClick={() => setBrand(brand === b ? '' : b)} className={`${chipBase} ${brand === b ? chipOn : chipOff}`}>
+                {b}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por tipo de peça">
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Tipo</span>
+            <button type="button" onClick={() => setCategory('')} className={`${chipBase} ${category === '' ? chipOn : chipOff}`}>Todos</button>
+            {categoryOptions.map((c) => (
+              <button key={c} type="button" onClick={() => setCategory(category === c ? '' : c)} className={`${chipBase} ${category === c ? chipOn : chipOff}`}>
+                {c}
+              </button>
+            ))}
           </div>
         </div>
-        {compats.error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{compats.error}</p>}
-        {!compats.loading && filteredCompats.length === 0 && <p className="text-slate-500">Nenhuma compatibilidade encontrada.</p>}
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredCompats.map((c) => (
-            <article key={c.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-slate-900">{c.part_nome}</h3>
-                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                  {c.device_label}
-                </span>
+
+        <div className="flex items-center justify-between text-sm text-slate-500" aria-live="polite">
+          <span>
+            {loading ? 'Carregando...' : `${results.length} peça(s)${hasFilters ? ` de ${groups.length}` : ''}`}
+          </span>
+          {hasFilters && (
+            <button type="button" onClick={clearFilters} className="font-medium text-blue-600 hover:underline">
+              Limpar busca e filtros
+            </button>
+          )}
+        </div>
+      </section>
+
+      {(parts.error || compats.error || devices.error) && (
+        <p className="rounded-lg bg-red-50 p-4 text-red-700">{parts.error || compats.error || devices.error}</p>
+      )}
+      {!loading && results.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+          Nenhuma peça encontrada{query ? ` para "${query}"` : ''}. Tente outro nome, código ou modelo.
+        </p>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {results.map((g) => {
+          const LIMIT = 12
+          const isOpen = expanded[g.id] || terms.length > 0
+          const shown = isOpen ? g.links : g.links.slice(0, LIMIT)
+          const hidden = g.links.length - shown.length
+          const individualNotes = g.sharedNote ? [] : g.links.filter((l) => l.notas)
+          return (
+            <article key={g.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="font-semibold leading-snug text-slate-900">{g.nome}</h3>
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  {g.categoria && (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{g.categoria}</span>
+                  )}
+                  {g.brands.map((b) => (
+                    <span key={b} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">{b}</span>
+                  ))}
+                </div>
               </div>
-              {c.notas && <p className="mt-2 text-sm leading-relaxed text-slate-700">{c.notas}</p>}
+
+              {g.links.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-400">Nenhum aparelho vinculado ainda.</p>
+              ) : (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Compatível com {g.links.length} modelo(s)
+                  </p>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {shown.map((l) => {
+                      const hit = linkMatchesTerms(l, terms)
+                      return (
+                        <li
+                          key={l.id}
+                          title={l.notas || undefined}
+                          className={`rounded-lg border px-2.5 py-1 text-sm ${
+                            hit ? 'border-amber-300 bg-amber-50 font-semibold text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                          }`}
+                        >
+                          {g.brands.length > 1 ? l.label : l.modelo}
+                          {l.notas && !g.sharedNote && <span aria-hidden="true" className="ml-1 text-xs opacity-60">ⓘ</span>}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {hidden > 0 && (
+                    <button type="button" onClick={() => setExpanded((s) => ({ ...s, [g.id]: true }))} className="mt-2 text-xs font-medium text-blue-600 hover:underline">
+                      + ver mais {hidden} modelo(s)
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {g.sharedNote && (
+                <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">💡 {g.sharedNote}</p>
+              )}
+              {individualNotes.length > 0 && (
+                <ul className="mt-3 space-y-1 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
+                  {individualNotes.map((l) => (
+                    <li key={l.id}><strong className="font-semibold">{l.modelo}:</strong> {l.notas}</li>
+                  ))}
+                </ul>
+              )}
+
               {isAdmin && (
-                <div className="mt-3 flex gap-3 border-t border-slate-100 pt-3 text-sm">
-                  <button onClick={() => setEditingCompat(c)} className="text-blue-600 hover:underline">Editar</button>
-                  <button onClick={() => remove(`/compatibilities/${c.id}`, 'esta compatibilidade', [compats.reload])} className="text-red-600 hover:underline">Excluir</button>
+                <div className="mt-auto pt-4">
+                  <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
+                    <button onClick={() => setEditingCompat({ part_id: g.id })} className="text-blue-600 hover:underline">+ Vincular aparelho</button>
+                    <button onClick={() => setManaging((s) => ({ ...s, [g.id]: !s[g.id] }))} className="text-slate-600 hover:underline">
+                      {managing[g.id] ? 'Fechar vínculos' : 'Gerenciar vínculos'}
+                    </button>
+                    <button onClick={() => setEditingPart(g)} className="text-slate-600 hover:underline">Editar peça</button>
+                    <button
+                      onClick={() => remove(`/parts/${g.id}`, `a peça "${g.nome}" (e suas compatibilidades)`, [parts.reload, compats.reload])}
+                      className="text-red-600 hover:underline"
+                    >
+                      Excluir peça
+                    </button>
+                  </div>
+                  {managing[g.id] && (
+                    <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 text-sm">
+                      {g.links.map((l) => (
+                        <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                          <span className="text-slate-800">{l.label}</span>
+                          <span className="flex gap-3">
+                            <button onClick={() => setEditingCompat({ id: l.id, device_id: l.device_id, part_id: g.id, notas: l.notas })} className="text-blue-600 hover:underline">Editar</button>
+                            <button onClick={() => remove(`/compatibilities/${l.id}`, `o vínculo com ${l.label}`, [compats.reload])} className="text-red-600 hover:underline">Excluir</button>
+                          </span>
+                        </li>
+                      ))}
+                      {g.links.length === 0 && <li className="px-3 py-2 text-slate-400">Sem vínculos.</li>}
+                    </ul>
+                  )}
                 </div>
               )}
             </article>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-slate-900">Peças ({filteredParts.length})</h2>
-          {isAdmin && <button onClick={() => setEditingPart({})} className={primaryBtn}>+ Nova peça</button>}
-        </div>
-        {parts.error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{parts.error}</p>}
-        {!parts.loading && filteredParts.length === 0 && <p className="text-slate-500">Nenhuma peça encontrada.</p>}
-        <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {filteredParts.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-3">
-              <div>
-                <span className="font-medium text-slate-900">{p.nome}</span>
-                {p.categoria && <span className="ml-2 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{p.categoria}</span>}
-              </div>
-              {isAdmin && (
-                <div className="flex gap-3 text-sm">
-                  <button onClick={() => setEditingPart(p)} className="text-blue-600 hover:underline">Editar</button>
-                  <button onClick={() => remove(`/parts/${p.id}`, `a peça "${p.nome}" (e suas compatibilidades)`, [parts.reload, compats.reload])} className="text-red-600 hover:underline">Excluir</button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+          )
+        })}
+      </div>
 
       {editingPart && (
         <EntityFormModal title={editingPart.id ? 'Editar peça' : 'Nova peça'} fields={PART_FIELDS} initial={editingPart} onSubmit={savePart} onClose={() => setEditingPart(null)} />

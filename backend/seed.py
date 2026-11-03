@@ -338,6 +338,13 @@ def seed_extended_knowledge(db):
             db.add(Compatibility(device_id=device.id, part_id=part.id, notas=notas))
 
 
+def seed_compat_master_list(db):
+    """Popula a lista mestra de compatibilidades (baterias, telas, subplacas, câmeras...)."""
+    from seed_compat_master import seed_compat_master
+
+    return seed_compat_master(db)
+
+
 def seed_trusted_sources(db):
     """Popula as fontes confiáveis padrão para a busca da IA na internet."""
     for nome, domain, categoria in DEFAULT_TRUSTED_SOURCES:
@@ -387,10 +394,12 @@ def main():
         added = seed_articles(db)
         seed_catalog(db)
         seed_extended_knowledge(db)
+        added_master = seed_compat_master_list(db)
         seed_trusted_sources(db)
         ensure_owner_admin(db)
         seed_admin(db)
         db.commit()
+        print(f"Lista mestra de compatibilidades — novos: {added_master}")
         print(f"{added} artigo(s) base novo(s). Wiki: {db.query(WikiArticle).count()} | "
               f"Aparelhos: {db.query(Device).count()} | Peças: {db.query(Part).count()} | "
               f"Compatibilidades: {db.query(Compatibility).count()} | "
