@@ -97,7 +97,7 @@ function Shell() {
         {tab === 'wiki' && <WikiView search={query} />}
         {tab === 'devices' && <DevicesView search={query} onAskDevice={handleAskDevice} />}
         {tab === 'parts' && <PartsView search={query} />}
-        {tab === 'checklist' && <ChecklistView onAskAI={handleAskFromChecklist} />}
+        {tab === 'checklist' && <ChecklistView onAskAI={handleAskFromChecklist} loggedIn={!!user} />}
         {tab === 'sources' && <SourcesView />}
         {tab === 'assistant' && (
           <AssistantView

@@ -140,7 +140,7 @@ describe('ChecklistView', () => {
     api.put.mockResolvedValue({ data: { id: 10, os_number: 'OS-0001', status: 'encerrada' } })
 
     const onAskAI = vi.fn()
-    render(<ChecklistView onAskAI={onAskAI} />)
+    render(<ChecklistView onAskAI={onAskAI} loggedIn />)
 
     await userEvent.type(screen.getByLabelText('Aparelho / Modelo'), 'Apple iPhone 13 Pro')
     await userEvent.type(screen.getByLabelText(/IMEI do Aparelho/i), '354891101234567')
@@ -162,5 +162,23 @@ describe('ChecklistView', () => {
     // Encerra a O.S. aberta
     await userEvent.click(screen.getByRole('button', { name: /🔒 Encerrar O.S\./i }))
     expect(await screen.findByText(/O\.S\. ENCERRADA/i)).toBeTruthy()
+  })
+
+  it('sem login avisa e não chama as rotas de O.S.; ao entrar, carrega da nuvem', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/service_orders') {
+        return Promise.resolve({ data: [{ id: 7, os_number: 'OS-0007', device_model: 'Galaxy A54', status: 'aberta', statuses: {} }] })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const { rerender } = render(<ChecklistView onAskAI={() => {}} loggedIn={false} />)
+    expect(screen.getByRole('note').textContent).toMatch(/Faça login para sincronizar/i)
+    expect(api.get).not.toHaveBeenCalledWith('/service_orders')
+    expect(api.get).not.toHaveBeenCalledWith('/service_orders/storage_info')
+
+    rerender(<ChecklistView onAskAI={() => {}} loggedIn />)
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/service_orders'))
+    expect(screen.queryByRole('note')).toBeNull()
   })
 })

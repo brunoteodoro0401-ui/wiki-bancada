@@ -122,7 +122,7 @@ function persistLocalOrders(list) {
   }
 }
 
-export default function ChecklistView({ onAskAI }) {
+export default function ChecklistView({ onAskAI, loggedIn = false }) {
   const { items: devices } = useResource('/devices')
 
   // Estado da O.S. atual no formulário
@@ -159,7 +159,10 @@ export default function ChecklistView({ onAskAI }) {
   const [syncingCloud, setSyncingCloud] = useState(false)
   const restoreInputRef = useRef(null)
 
+  // As rotas de O.S. exigem login: só sincroniza com a nuvem quando há sessão ativa.
+  // Ao entrar (ou sair), o efeito roda de novo e recarrega a lista do servidor.
   useEffect(() => {
+    if (!loggedIn) return undefined
     let active = true
     api
       .get('/service_orders/storage_info')
@@ -199,7 +202,7 @@ export default function ChecklistView({ onAskAI }) {
     return () => {
       active = false
     }
-  }, [])
+  }, [loggedIn])
 
   const matchedDevice = devices.find(
     (d) => `${d.marca} ${d.modelo}`.toLowerCase() === deviceModel.trim().toLowerCase(),
@@ -601,6 +604,10 @@ export default function ChecklistView({ onAskAI }) {
   }
 
   async function handleSyncSystemCloud() {
+    if (!loggedIn) {
+      showNotice('🔒 Faça login para sincronizar as O.S. com a nuvem — por enquanto elas continuam salvas neste navegador.')
+      return
+    }
     setSyncingCloud(true)
     try {
       const payloadOrders = savedHistory.map((o) => ({
@@ -732,6 +739,12 @@ export default function ChecklistView({ onAskAI }) {
           className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-2xs"
         >
           {feedbackBanner}
+        </div>
+      )}
+
+      {!loggedIn && (
+        <div role="note" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          🔒 Faça login para sincronizar suas O.S. com a nuvem. Sem login, elas ficam salvas só neste navegador.
         </div>
       )}
 
