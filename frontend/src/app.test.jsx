@@ -127,25 +127,40 @@ describe('UsersModal', () => {
 })
 
 describe('ChecklistView', () => {
-  it('permite marcar defeito, salvar no histórico e enviar diagnóstico para a IA', async () => {
-    api.get.mockResolvedValue({
-      data: [{ id: 1, marca: 'Apple', modelo: 'iPhone 13 Pro', opening_method: 'Frontal', has_flex_cable: true }],
+  it('permite preencher IMEI, abrir O.S., encerrar O.S. e enviar diagnóstico para a IA', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/devices') {
+        return Promise.resolve({
+          data: [{ id: 1, marca: 'Apple', modelo: 'iPhone 13 Pro', opening_method: 'Frontal', has_flex_cable: true }],
+        })
+      }
+      return Promise.resolve({ data: [] })
     })
+    api.post.mockResolvedValue({ data: { id: 10, os_number: 'OS-0001' } })
+    api.put.mockResolvedValue({ data: { id: 10, os_number: 'OS-0001', status: 'encerrada' } })
+
     const onAskAI = vi.fn()
     render(<ChecklistView onAskAI={onAskAI} />)
 
     await userEvent.type(screen.getByLabelText('Aparelho / Modelo'), 'Apple iPhone 13 Pro')
+    await userEvent.type(screen.getByLabelText(/IMEI do Aparelho/i), '354891101234567')
     expect(await screen.findByText(/Alerta de Bancada/i)).toBeTruthy()
 
     const biometriaGroup = screen.getByRole('group', { name: 'Biometria (Digital) / Face ID' })
     const defeitoBtn = biometriaGroup.querySelectorAll('button')[1]
     await userEvent.click(defeitoBtn)
 
-    await userEvent.click(screen.getByRole('button', { name: /Salvar no Histórico Local/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Abrir Ordem de Serviço/i }))
     expect(screen.getByText(/1 item\(ns\) com defeito/i)).toBeTruthy()
+    expect(screen.getByText('354891101234567')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Gerar Laudo em PDF/i })).toBeTruthy()
 
     await userEvent.click(screen.getByRole('button', { name: /Diagnosticar \(1 defeito\) na IA/i }))
     expect(onAskAI).toHaveBeenCalledTimes(1)
-    expect(onAskAI.mock.calls[0][0]).toMatch(/Biometria \(Digital\) \/ Face ID/i)
+    expect(onAskAI.mock.calls[0][0]).toMatch(/354891101234567/i)
+
+    // Encerra a O.S. aberta
+    await userEvent.click(screen.getByRole('button', { name: /🔒 Encerrar O.S\./i }))
+    expect(await screen.findByText(/O\.S\. ENCERRADA/i)).toBeTruthy()
   })
 })

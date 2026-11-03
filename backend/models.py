@@ -65,3 +65,25 @@ class AppSetting(Base):
 
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
+
+
+class ServiceOrder(Base):
+    __tablename__ = "Service_Orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    os_number = Column(String, index=True, nullable=False)
+    status = Column(String, default="aberta")
+    stage = Column(String, default="Entrada (Pré-Reparo)")
+    client_name = Column(String)
+    client_phone = Column(String)
+    device_model = Column(String, nullable=False)
+    imei = Column(String, index=True)
+    bench_current = Column(String)
+    battery_health = Column(String)
+    notes = Column(Text)
+    closure_notes = Column(Text)
+    service_value = Column(String)
+    statuses_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+    closed_at = Column(String)

@@ -1,5 +1,9 @@
+import datetime as dt
+import json
 import os
+import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -398,3 +402,206 @@ def ask(data: schemas.AskIn, db: Session = Depends(get_db), _: models.User = Dep
         image_base64=data.image_base64,
         image_mime_type=data.image_mime_type,
     )
+
+
+# ====================== Ordens de Serviço (O.S.) & Checklist ======================
+def _get_os_storage_dir() -> Path:
+    docs_dir = Path.home() / "Documents"
+    if docs_dir.exists():
+        target = docs_dir / "Wiki_Bancada_OS"
+    else:
+        target = Path(__file__).parent / "ordens_de_servico"
+    return target
+
+
+def _order_to_dict(row: models.ServiceOrder) -> dict:
+    try:
+        statuses = json.loads(row.statuses_json or "{}")
+    except Exception:
+        statuses = {}
+    return {
+        "id": row.id,
+        "os_number": row.os_number,
+        "status": row.status,
+        "stage": row.stage,
+        "client_name": row.client_name,
+        "client_phone": row.client_phone,
+        "device_model": row.device_model,
+        "imei": row.imei,
+        "bench_current": row.bench_current,
+        "battery_health": row.battery_health,
+        "notes": row.notes,
+        "closure_notes": row.closure_notes,
+        "service_value": row.service_value,
+        "statuses": statuses,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+        "closed_at": row.closed_at,
+    }
+
+
+def _persist_os_file_on_disk(order_dict: dict) -> None:
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    try:
+        folder = _get_os_storage_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        safe_os = re.sub(r"[^a-zA-Z0-9_-]", "_", order_dict["os_number"])
+        safe_dev = re.sub(r"[^a-zA-Z0-9_-]", "_", order_dict["device_model"])[:30]
+        base_name = f"{safe_os}_{safe_dev}"
+        json_path = folder / f"{base_name}.json"
+        json_path.write_text(json.dumps(order_dict, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _next_os_number(db: Session) -> str:
+    count = db.query(models.ServiceOrder).count()
+    return f"OS-{count + 1:04d}"
+
+
+@app.get("/service_orders/storage_info")
+def get_os_storage_info(db: Session = Depends(get_db)):
+    folder = _get_os_storage_dir()
+    total = db.query(models.ServiceOrder).count()
+    return {
+        "local_folder_path": str(folder),
+        "total_orders": total,
+    }
+
+
+@app.get("/service_orders", response_model=List[schemas.ServiceOrderOut])
+def list_service_orders(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.ServiceOrder)
+    if status:
+        q = q.filter(models.ServiceOrder.status == status)
+    rows = q.order_by(models.ServiceOrder.id.desc()).limit(300).all()
+    return [_order_to_dict(r) for r in rows]
+
+
+@app.post("/service_orders", response_model=schemas.ServiceOrderOut, status_code=201)
+def create_service_order(data: schemas.ServiceOrderIn, db: Session = Depends(get_db)):
+    now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
+    os_num = (data.os_number or "").strip() or _next_os_number(db)
+    closed_at = data.closed_at or (now_str if data.status == "encerrada" else None)
+    obj = models.ServiceOrder(
+        os_number=os_num,
+        status=data.status,
+        stage=data.stage,
+        client_name=data.client_name,
+        client_phone=data.client_phone,
+        device_model=data.device_model.strip(),
+        imei=(data.imei or "").strip() or None,
+        bench_current=data.bench_current,
+        battery_health=data.battery_health,
+        notes=data.notes,
+        closure_notes=data.closure_notes,
+        service_value=data.service_value,
+        statuses_json=json.dumps(data.statuses or {}, ensure_ascii=False),
+        created_at=data.created_at or now_str,
+        updated_at=now_str,
+        closed_at=closed_at,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    out = _order_to_dict(obj)
+    _persist_os_file_on_disk(out)
+    return out
+
+
+@app.put("/service_orders/{order_id}", response_model=schemas.ServiceOrderOut)
+def update_service_order(order_id: int, data: schemas.ServiceOrderIn, db: Session = Depends(get_db)):
+    obj = _get_or_404(db, models.ServiceOrder, order_id, "Ordem de Serviço")
+    now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
+    if data.os_number and data.os_number.strip():
+        obj.os_number = data.os_number.strip()
+    obj.status = data.status
+    obj.stage = data.stage
+    obj.client_name = data.client_name
+    obj.client_phone = data.client_phone
+    obj.device_model = data.device_model.strip()
+    obj.imei = (data.imei or "").strip() or None
+    obj.bench_current = data.bench_current
+    obj.battery_health = data.battery_health
+    obj.notes = data.notes
+    obj.closure_notes = data.closure_notes
+    obj.service_value = data.service_value
+    obj.statuses_json = json.dumps(data.statuses or {}, ensure_ascii=False)
+    obj.updated_at = now_str
+    if data.status == "encerrada" and not obj.closed_at:
+        obj.closed_at = data.closed_at or now_str
+    elif data.status != "encerrada":
+        obj.closed_at = None
+    db.commit()
+    db.refresh(obj)
+    out = _order_to_dict(obj)
+    _persist_os_file_on_disk(out)
+    return out
+
+
+@app.delete("/service_orders/{order_id}")
+def delete_service_order(order_id: int, db: Session = Depends(get_db)):
+    obj = _get_or_404(db, models.ServiceOrder, order_id, "Ordem de Serviço")
+    db.delete(obj)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/service_orders/restore")
+def restore_service_orders(data: schemas.ServiceOrderRestoreIn, db: Session = Depends(get_db)):
+    restored = 0
+    now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
+    for item in data.orders:
+        os_num = (item.os_number or "").strip() or _next_os_number(db)
+        existing = (
+            db.query(models.ServiceOrder)
+            .filter(
+                models.ServiceOrder.os_number == os_num,
+                models.ServiceOrder.device_model == item.device_model.strip(),
+            )
+            .first()
+        )
+        if existing:
+            existing.status = item.status
+            existing.stage = item.stage
+            existing.client_name = item.client_name
+            existing.client_phone = item.client_phone
+            existing.imei = (item.imei or "").strip() or None
+            existing.bench_current = item.bench_current
+            existing.battery_health = item.battery_health
+            existing.notes = item.notes
+            existing.closure_notes = item.closure_notes
+            existing.service_value = item.service_value
+            existing.statuses_json = json.dumps(item.statuses or {}, ensure_ascii=False)
+            existing.updated_at = item.updated_at or now_str
+            existing.closed_at = item.closed_at
+            _persist_os_file_on_disk(_order_to_dict(existing))
+        else:
+            obj = models.ServiceOrder(
+                os_number=os_num,
+                status=item.status,
+                stage=item.stage,
+                client_name=item.client_name,
+                client_phone=item.client_phone,
+                device_model=item.device_model.strip(),
+                imei=(item.imei or "").strip() or None,
+                bench_current=item.bench_current,
+                battery_health=item.battery_health,
+                notes=item.notes,
+                closure_notes=item.closure_notes,
+                service_value=item.service_value,
+                statuses_json=json.dumps(item.statuses or {}, ensure_ascii=False),
+                created_at=item.created_at or now_str,
+                updated_at=item.updated_at or now_str,
+                closed_at=item.closed_at,
+            )
+            db.add(obj)
+            db.flush()
+            _persist_os_file_on_disk(_order_to_dict(obj))
+        restored += 1
+    db.commit()
+    return {"restored_count": restored}

@@ -180,3 +180,50 @@ class AskOut(BaseModel):
     web_sources: List[WebSourceOut] = []
     follow_up_suggestions: List[str] = []
     suggested_article: Optional[WikiBase] = None
+
+
+# ---------- Ordens de Serviço (O.S.) e Checklist de Bancada ----------
+OSStatus = Literal["aberta", "em_bancada", "encerrada"]
+
+
+class ServiceOrderIn(BaseModel):
+    os_number: Optional[str] = None
+    status: OSStatus = "aberta"
+    stage: str = "Entrada (Pré-Reparo)"
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    device_model: str = Field(min_length=1, max_length=200)
+    imei: Optional[str] = Field(default=None, max_length=60)
+    bench_current: Optional[str] = None
+    battery_health: Optional[str] = None
+    notes: Optional[str] = None
+    closure_notes: Optional[str] = None
+    service_value: Optional[str] = None
+    statuses: dict = {}
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    closed_at: Optional[str] = None
+
+
+class ServiceOrderOut(BaseModel):
+    id: int
+    os_number: str
+    status: str
+    stage: str
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    device_model: str
+    imei: Optional[str] = None
+    bench_current: Optional[str] = None
+    battery_health: Optional[str] = None
+    notes: Optional[str] = None
+    closure_notes: Optional[str] = None
+    service_value: Optional[str] = None
+    statuses: dict = {}
+    created_at: str
+    updated_at: str
+    closed_at: Optional[str] = None
+
+
+class ServiceOrderRestoreIn(BaseModel):
+    orders: List[ServiceOrderIn]
