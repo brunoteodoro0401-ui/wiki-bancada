@@ -367,6 +367,35 @@ def ingest(data: schemas.IngestIn, db: Session = Depends(get_db), _: models.User
     )
 
 
+@app.post("/ingest_compatibilities", response_model=schemas.CompatIngestOut)
+def ingest_compatibilities_endpoint(
+    data: schemas.CompatIngestIn,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    return rag.ingest_compatibilities(
+        db=db,
+        source_type=data.source_type,
+        content=data.content,
+        category_hint=data.category_hint,
+        use_trusted_sources_only=data.use_trusted_sources_only,
+        auto_save=data.auto_save,
+    )
+
+
+@app.post("/compatibilities/bulk_save")
+def bulk_save_compatibilities_endpoint(
+    data: schemas.CompatBulkSaveIn,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    saved = rag.save_extracted_compatibilities(
+        db=db,
+        items=[it.model_dump() for it in data.items],
+    )
+    return {"saved_count": saved}
+
+
 # ====================== Configuração do Motor de IA ======================
 @app.get("/ai_settings", response_model=schemas.AISettingsOut)
 def get_ai_settings_endpoint(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):

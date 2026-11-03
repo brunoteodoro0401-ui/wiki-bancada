@@ -227,3 +227,31 @@ class ServiceOrderOut(BaseModel):
 
 class ServiceOrderRestoreIn(BaseModel):
     orders: List[ServiceOrderIn]
+
+
+# ---------- Busca e Importação Inteligente de Compatibilidades ----------
+class CompatExtractedItem(BaseModel):
+    part_nome: str = Field(min_length=1, max_length=200)
+    part_categoria: Optional[str] = "Display"
+    marca: str = Field(min_length=1, max_length=80)
+    modelo: str = Field(min_length=1, max_length=120)
+    notas: Optional[str] = None
+
+
+class CompatIngestIn(BaseModel):
+    source_type: IngestType = "search"
+    content: str = Field(min_length=3, max_length=15000)
+    category_hint: Optional[str] = None
+    use_trusted_sources_only: bool = False
+    auto_save: bool = False
+
+
+class CompatIngestOut(BaseModel):
+    extracted_text_preview: str
+    source_references: List[WebSourceOut] = []
+    items: List[CompatExtractedItem]
+    saved_count: int = 0
+
+
+class CompatBulkSaveIn(BaseModel):
+    items: List[CompatExtractedItem]

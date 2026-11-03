@@ -964,6 +964,245 @@ def ingest_content(
     }
 
 
+def _infer_brand(model_text: str) -> str:
+    low = model_text.lower()
+    if "iphone" in low or "ipad" in low or "apple" in low:
+        return "Apple"
+    if any(w in low for w in ("galaxy", "samsung", "a0", "a1", "a2", "a3", "a5", "a7", "m1", "m2", "m3", "m5", "s2")):
+        return "Samsung"
+    if any(w in low for w in ("moto", "edge", "motorola", "lenovo")):
+        return "Motorola"
+    if any(w in low for w in ("redmi", "poco", "xiaomi", "mi ")):
+        return "Xiaomi"
+    if any(w in low for w in ("realme", "oppo")):
+        return "Realme"
+    if "infinix" in low:
+        return "Infinix"
+    return "Geral"
+
+
+def _heuristic_extract_compatibilities(raw_text: str, category_hint: Optional[str] = None, query_hint: str = "") -> List[Dict[str, str]]:
+    """Extrator heurístico de compatibilidades para listas/tabelas (ex: 'A02s / A03 / A03s' ou texto sem LLM)."""
+    cat = (category_hint or "Display").strip() or "Display"
+    combined = f"{query_hint}\n{raw_text}"
+    lower_c = combined.lower()
+    if not category_hint:
+        if "bateria" in lower_c or "bn5" in lower_c or "jk50" in lower_c:
+            cat = "Bateria"
+        elif "subplaca" in lower_c or "conector" in lower_c or "carga" in lower_c:
+            cat = "Subplaca"
+        elif "flex" in lower_c or "biometria" in lower_c or "power" in lower_c:
+            cat = "Flex"
+        elif "camera" in lower_c or "câmera" in lower_c:
+            cat = "Câmera"
+
+    items: List[Dict[str, str]] = []
+    # Procura linhas que contenham '/' ou '=' ou 'compatível' indicando equivalência entre modelos
+    for raw_line in raw_text.splitlines():
+        line = raw_line.strip(" -•*\t")
+        if len(line) < 5 or line.startswith(("Fonte:", "http", "Conteúdo")):
+            continue
+        if "/" in line or "=" in line or "compat" in line.lower():
+            parts_split = [p.strip() for p in re.split(r"[/=]|compat[íi]vel com", line, flags=re.I) if p.strip()]
+            if len(parts_split) >= 2:
+                group_label = " / ".join(p[:30] for p in parts_split[:4])
+                part_name = f"{'Tela' if cat == 'Display' else cat} Universal {group_label}"[:160]
+                for tok in parts_split[:5]:
+                    clean_mod = re.sub(r"\(.*?\)", "", tok).strip()[:80]
+                    if len(clean_mod) >= 2:
+                        brand = _infer_brand(f"{clean_mod} {line}")
+                        items.append({
+                            "part_nome": part_name,
+                            "part_categoria": cat,
+                            "marca": brand,
+                            "modelo": clean_mod,
+                            "notas": f"Extraído de tabela de compatibilidade: {line[:180]}",
+                        })
+                if len(items) >= 12:
+                    break
+
+    if not items:
+        dev = extract_device_mention(combined) or (query_hint.strip()[:60] if query_hint else "Smartphone")
+        dev_title = dev.title().replace("Iphone", "iPhone")
+        brand = _infer_brand(dev_title)
+        items.append({
+            "part_nome": f"{'Tela Frontal' if cat == 'Display' else cat} Compatível {dev_title}",
+            "part_categoria": cat,
+            "marca": brand,
+            "modelo": dev_title,
+            "notas": re.sub(r"\s+", " ", raw_text).strip()[:280] or "Verifique versão do flex e aro na bancada.",
+        })
+    return items
+
+
+def extract_compatibilities_from_content(
+    raw_text: str,
+    category_hint: Optional[str] = None,
+    query_hint: str = "",
+) -> List[Dict[str, str]]:
+    """Usa IA (Gemini / Hugging Face) combinada com os dados da web para extrair lista estruturada de compatibilidade de peças."""
+    cat = (category_hint or "").strip()
+    if get_config("GEMINI_API_KEY") or get_config("HF_API_KEY"):
+        prompt = (
+            "Você é um especialista sênior em peças e reposição de celulares no Brasil.\n"
+            "Com base no material abaixo E no seu conhecimento técnico verificado de tabelas de compatibilidade de bancada, "
+            "liste as compatibilidades reais de peças pedidas pelo técnico.\n"
+            f"Pesquisa / Pedido do Técnico: {query_hint or 'Compatibilidade de peças de celular'}\n"
+            f"Categoria preferencial: {cat or 'Identifique (Display, Bateria, Subplaca, Flex, Conector, Câmera)'}\n\n"
+            "IMPORTANTE: Quando uma mesma peça (ex: uma tela ou bateria universal) serve em vários aparelhos "
+            "(ex: Redmi Note 10 4G, Note 10S e Poco M5s), gere UM item no array para CADA aparelho compatível, "
+            "usando exatamente o MESMO `part_nome` para agrupar a peça!\n\n"
+            "Responda ESTRITAMENTE com um array JSON válido (de 2 a 12 itens), onde cada objeto tem:\n"
+            '- "part_nome": nome claro da peça e grupo de equivalência (ex: "Tela Super AMOLED Redmi Note 10 4G / Note 10S / Poco M5s")\n'
+            '- "part_categoria": "Display", "Bateria", "Subplaca", "Flex", "Conector" ou "Câmera"\n'
+            '- "marca": marca do aparelho (ex: "Samsung", "Xiaomi", "Motorola", "Apple")\n'
+            '- "modelo": modelo específico do aparelho (ex: "Galaxy A12", "Redmi Note 10S", "Moto G22", "iPhone 12")\n'
+            '- "notas": cuidados técnicos de bancada (ex: "Compatível sem aro; atenção à versão V1/V2 do flex ou sensor")\n\n'
+            f"MATERIAL COLETADO NA WEB / TEXTO:\n{raw_text[:6500]}"
+        )
+        try:
+            raw_reply = call_llm(
+                prompt,
+                system_prompt="Você estrutura tabelas técnicas de compatibilidade de peças de smartphones em JSON válido.",
+            )
+            match = re.search(r"\[.*\]", raw_reply, flags=re.S)
+            if match:
+                parsed = json.loads(match.group(0))
+                out = []
+                for item in parsed:
+                    if isinstance(item, dict) and item.get("part_nome") and item.get("modelo"):
+                        modelo_str = str(item.get("modelo")).strip()[:120]
+                        marca_str = str(item.get("marca") or _infer_brand(modelo_str)).strip()[:80]
+                        out.append({
+                            "part_nome": str(item.get("part_nome")).strip()[:200],
+                            "part_categoria": str(item.get("part_categoria") or cat or "Display").strip()[:60],
+                            "marca": marca_str,
+                            "modelo": modelo_str,
+                            "notas": str(item.get("notas") or "Compatibilidade verificada.").strip()[:500],
+                        })
+                if out:
+                    return out
+        except Exception:
+            pass
+
+    return _heuristic_extract_compatibilities(raw_text, category_hint=cat, query_hint=query_hint)
+
+
+def save_extracted_compatibilities(db: Session, items: List[Dict]) -> int:
+    """Cria automaticamente os Aparelhos (Devices), Peças (Parts) e Vínculos (Compatibilities) que ainda não existirem."""
+    saved_count = 0
+    for item in items:
+        part_nome = (item.get("part_nome") or "").strip()
+        part_cat = (item.get("part_categoria") or "Display").strip()
+        marca = (item.get("marca") or "Geral").strip()
+        modelo = (item.get("modelo") or "").strip()
+        notas = (item.get("notas") or "").strip() or None
+        if not part_nome or not modelo:
+            continue
+
+        # 1) Busca ou cria o Device
+        device = (
+            db.query(models.Device)
+            .filter(models.Device.modelo.ilike(modelo))
+            .first()
+        )
+        if not device:
+            opening = "Frontal" if marca.lower() == "apple" and "15" not in modelo else "Traseira"
+            device = models.Device(
+                marca=marca,
+                modelo=modelo,
+                opening_method=opening,
+                has_flex_cable=True,
+            )
+            db.add(device)
+            db.flush()
+
+        # 2) Busca ou cria a Part
+        part = (
+            db.query(models.Part)
+            .filter(models.Part.nome.ilike(part_nome))
+            .first()
+        )
+        if not part:
+            part = models.Part(nome=part_nome, categoria=part_cat)
+            db.add(part)
+            db.flush()
+
+        # 3) Cria ou atualiza a Compatibility
+        existing_compat = (
+            db.query(models.Compatibility)
+            .filter_by(device_id=device.id, part_id=part.id)
+            .first()
+        )
+        if not existing_compat:
+            db.add(models.Compatibility(device_id=device.id, part_id=part.id, notas=notas))
+            saved_count += 1
+        elif notas and not existing_compat.notas:
+            existing_compat.notas = notas
+
+    db.commit()
+    return saved_count
+
+
+def ingest_compatibilities(
+    db: Session,
+    source_type: str,
+    content: str,
+    category_hint: Optional[str] = None,
+    use_trusted_sources_only: bool = False,
+    auto_save: bool = False,
+) -> Dict:
+    """Pesquisa na internet, lê URL/YouTube ou analisa tabela colada para extrair compatibilidades de peças."""
+    _sync_db_settings(db)
+    trusted_rows = db.query(models.TrustedSource).filter_by(ativo=True).all()
+    trusted_domains = [r.url_or_domain for r in trusted_rows]
+
+    refs: List[Dict[str, str]] = []
+    if source_type == "youtube":
+        extracted_text, refs = fetch_youtube_content(content)
+    elif source_type == "url":
+        extracted_text, refs = fetch_url_content(content)
+    elif source_type == "search":
+        search_query = content.strip()
+        if "compat" not in search_query.lower():
+            search_query = f"tabela compatibilidade peças {search_query}"
+        hits = search_web(
+            search_query,
+            trusted_domains=trusted_domains,
+            strict_domains=use_trusted_sources_only,
+            max_results=6,
+        )
+        if not hits and use_trusted_sources_only:
+            hits = search_web(search_query, trusted_domains=None, strict_domains=False, max_results=6)
+        hits = enrich_hits_with_page_content(hits, max_pages=2)
+        refs = [{"title": h["title"], "url": h["url"]} for h in hits]
+        if hits:
+            extracted_text = "\n\n".join(
+                f"Fonte: {h['title']} ({h['url']})\nConteúdo: {h['snippet']}" for h in hits
+            )
+        else:
+            extracted_text = f"Busca de compatibilidade de peças: {content}"
+    else:
+        extracted_text = content.strip()
+
+    items = extract_compatibilities_from_content(
+        extracted_text,
+        category_hint=category_hint,
+        query_hint=content if source_type == "search" else "",
+    )
+
+    saved_count = 0
+    if auto_save and items:
+        saved_count = save_extracted_compatibilities(db, items)
+
+    return {
+        "extracted_text_preview": extracted_text[:1200],
+        "source_references": refs[:6],
+        "items": items,
+        "saved_count": saved_count,
+    }
+
+
 def _retrieval_answer(docs: List[Dict], note: str) -> str:
     lines = [note, ""]
     for i, d in enumerate(docs, 1):
