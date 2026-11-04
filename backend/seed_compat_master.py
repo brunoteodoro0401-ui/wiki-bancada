@@ -33,8 +33,9 @@ SAMSUNG = [
     # Telas frontais (sem aro)
     {"categoria": "Display", "nome": "Tela Frontal Galaxy A12 (SM-A125/A127) — sem aro",
      "modelos": ["Galaxy A12", "Galaxy M12", "Galaxy F12", ("Galaxy A02", "Encaixa também no A02.")]},
-    {"categoria": "Display", "nome": "Tela Frontal Galaxy A02s (SM-A025) / A03s (SM-A037) — sem aro",
-     "modelos": ["Galaxy A02s", "Galaxy A03s"], "notas": "Mesmo painel LCD."},
+    {"categoria": "Display", "nome": "Tela Frontal Galaxy A02s / A03s / A03 Core / A04e — sem aro",
+     "modelos": ["Galaxy A02s", "Galaxy A03s", "Galaxy A03 Core", "Galaxy A04e"],
+     "notas": "Matriz LCD unificada nas versões sem aro."},
     {"categoria": "Display", "nome": "Tela Frontal OLED Galaxy M21 / M21s / M30s / M31 — sem aro",
      "modelos": ["Galaxy M21", "Galaxy M21s", "Galaxy M30s", "Galaxy M31"], "notas": "Painéis OLED idênticos."},
     {"categoria": "Display", "nome": "Tela Frontal Galaxy A50 / A30s / A50s — sem aro",
@@ -54,47 +55,35 @@ SAMSUNG = [
      "modelos": ["Galaxy A10s", "Galaxy A20s", "Galaxy M12"], "notas": "Mudam apenas as cores."},
     {"categoria": "Periférico", "nome": "Alto-falante Auricular Galaxy A10 / A20 / A30 / A50",
      "modelos": ["Galaxy A10", "Galaxy A20", "Galaxy A30", "Galaxy A50"]},
+    # --- Inventário consolidado (nov/2026)
+    {"categoria": "Display", "nome": "Tela Frontal Galaxy A15 4G / A15 5G",
+     "modelos": ["Galaxy A15 4G", "Galaxy A15 5G"], "notas": "Frontal unificada."},
+    {"categoria": "Display", "nome": "Tela Frontal Galaxy M23 5G / M33 5G",
+     "modelos": ["Galaxy M23 5G", "Galaxy M33 5G"], "notas": "Compartilham o mesmo painel."},
+    {"categoria": "Bateria", "nome": "Bateria WT-S-N28 / WT-S-W1",
+     "modelos": ["Galaxy A05", "Galaxy A04e", "Galaxy A22 5G"]},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Galaxy A12 / M12",
+     "modelos": ["Galaxy A12", "Galaxy M12"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Galaxy A02s / A03s",
+     "modelos": ["Galaxy A02s", "Galaxy A03s"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Galaxy A14 4G",
+     "modelos": ["Galaxy A14 4G"], "notas": "NÃO serve no A14 5G — componentes incompatíveis entre si."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Galaxy A14 5G",
+     "modelos": ["Galaxy A14 5G"], "notas": "NÃO serve no A14 4G — componentes incompatíveis entre si."},
+    {"categoria": "Carcaça", "nome": "Tampa Traseira Galaxy A15 4G / A15 5G",
+     "modelos": ["Galaxy A15 4G", "Galaxy A15 5G"], "notas": "Tampa unificada."},
+    {"categoria": "Carcaça", "nome": "Tampa Traseira Galaxy A16 4G / A16 5G",
+     "modelos": ["Galaxy A16 4G", "Galaxy A16 5G"], "notas": "Tampa unificada."},
+    {"categoria": "Carcaça", "nome": "Tampa Traseira Galaxy S20 FE",
+     "modelos": ["Galaxy S20 FE"]},
 ]
 
 # --------------------------------------------------------------------------- MOTOROLA
 MOTOROLA = [
     # Baterias
-    {"categoria": "Bateria", "nome": "Bateria JK50", "modelos": ["Moto G7 Power", "Moto G8 Power Lite", "Moto G9 Play", "Moto G10", "Moto G20", "Moto G30", "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"], "notas": "Lista informada como 6000mAh — confira a capacidade impressa na etiqueta da bateria original."},
-    {"categoria": "Bateria", "nome": "Bateria NH50", "modelos": ["Moto G22", "Moto G13", "Moto G53", "Moto E13", "Moto E32", "Moto E32s"]},
-    {"categoria": "Bateria", "nome": "Bateria MC50 (6000mAh)", "modelos": ["Moto G60", "Moto G9 Power", "Moto G40 Fusion"]},
-    {"categoria": "Bateria", "nome": "Bateria KS50", "modelos": ["Motorola One Vision", "Motorola One Action"]},
-    {"categoria": "Bateria", "nome": "Bateria HG40", "modelos": ["Moto G5s", "Moto G5s Plus", "Moto G6"]},
-    {"categoria": "Bateria", "nome": "Bateria JG40", "modelos": ["Moto G7 Play", "Motorola One"]},
-    {"categoria": "Bateria", "nome": "Bateria QB50", "modelos": ["Moto G84"]},
-    {"categoria": "Bateria", "nome": "Bateria QM50", "modelos": ["Motorola Edge 40 Neo"]},
-    {"categoria": "Bateria", "nome": "Bateria QC50", "modelos": ["Motorola Edge 50 Fusion"]},
-    {"categoria": "Bateria", "nome": "Bateria SP50", "modelos": ["Motorola Edge 60 Neo"]},
-    # Telas frontais e carcaças (sem aro)
-    {"categoria": "Display", "nome": "Tela Frontal OLED Moto G31 / G41 / G71 — sem aro", "modelos": ["Moto G31", "Moto G41", "Moto G71"], "notas": "Frontais idênticas."},
-    {"categoria": "Display", "nome": "Tela Frontal LCD 120Hz Moto G60 / G60s — sem aro", "modelos": ["Moto G60", "Moto G60s"], "notas": "Frontais idênticas — testar a taxa de atualização."},
-    {"categoria": "Display", "nome": "Tela e Chassi Moto G8 Play / One Macro", "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Telas e chassis idênticos."},
-    {"categoria": "Display", "nome": "Tela Frontal LCD Moto G9 Play / E7 Plus — sem aro", "modelos": ["Moto G9 Play", "Moto E7 Plus"], "notas": "Mesmo painel LCD."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto E6s / E6i — sem aro", "modelos": ["Moto E6s", "Moto E6i"], "notas": "Frontais idênticas."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G13 / G23 — sem aro", "modelos": ["Moto G13", "Moto G23"], "notas": "Frontais idênticas."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G04 / G04s / G24 — sem aro", "modelos": ["Moto G04", "Moto G04s", "Moto G24"], "notas": "Mesmo painel frontal."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G34 / G45 / G53 — sem aro", "modelos": ["Moto G34", "Moto G45", "Moto G53"]},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G32 / G52 / G62 / G72 / G82 / G73 — sem aro", "modelos": ["Moto G32", "Moto G52", "Moto G62", "Moto G72", "Moto G82", "Moto G73"]},
-    {"categoria": "Display", "nome": "Tela Frontal Moto Edge 40 / Edge 40 Neo — sem aro", "modelos": ["Moto Edge 40", "Moto Edge 40 Neo"]},
-    {"categoria": "Display", "nome": "Tela, Tampa Traseira e Chassi Moto G10 / G20 / G30", "modelos": ["Moto G10", ("Moto G20", "Exige lote 90Hz."), ("Moto G30", "Exige lote 90Hz.")], "notas": "Telas, tampas traseiras e chassis idênticos."},
-    # Placas sub (carga) e periféricos
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G52 / G82", "modelos": ["Moto G52", "Moto G82"], "notas": "Mesma placa sub de carga."},
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G10 / G20", "modelos": ["Moto G10", "Moto G20"], "notas": "Mesma placa sub de carga."},
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G8 Play / One Macro", "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Mesma placa sub de carga."},
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G05 5G / G15", "modelos": ["Moto G05 5G", "Moto G15"]},
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto E20 / E40", "modelos": ["Moto E20", "Moto E40"]},
-    {"categoria": "Biometria", "nome": "Leitor Biométrico Traseiro Moto G7 Play / G7 Power", "modelos": ["Moto G7 Play", "Moto G7 Power"]},
-]
-
-MOTOROLA = [
-    # Baterias
     {"categoria": "Bateria", "nome": "Bateria JK50",
      "modelos": ["Moto G7 Power", "Moto G8 Power Lite", "Moto G9 Play", "Moto G10", "Moto G20", "Moto G30",
-                 "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"],
+                 "Moto G31", "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"],
      "notas": "Lista informada como 6000mAh — confira a capacidade impressa na etiqueta da bateria original."},
     {"categoria": "Bateria", "nome": "Bateria NH50",
      "modelos": ["Moto G22", "Moto G13", "Moto G53", "Moto E13", "Moto E32", "Moto E32s"]},
@@ -117,10 +106,11 @@ MOTOROLA = [
      "modelos": ["Moto G9 Play", "Moto E7 Plus"], "notas": "Mesmo painel LCD."},
     {"categoria": "Display", "nome": "Tela Frontal Moto E6s / E6i — sem aro",
      "modelos": ["Moto E6s", "Moto E6i"], "notas": "Frontais idênticas."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G13 / G23 — sem aro",
-     "modelos": ["Moto G13", "Moto G23"], "notas": "Frontais idênticas."},
-    {"categoria": "Display", "nome": "Tela Frontal Moto G04 / G04s / G24 — sem aro",
-     "modelos": ["Moto G04", "Moto G04s", "Moto G24"], "notas": "Mesmo painel frontal."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G13 / G23 / G34 / G45 / G53 — sem aro",
+     "modelos": ["Moto G13", "Moto G23", "Moto G34", "Moto G45", "Moto G53"],
+     "notas": "Painéis LCD idênticos unificados."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G04 / G04s / G24 / G24 Power — sem aro",
+     "modelos": ["Moto G04", "Moto G04s", "Moto G24", "Moto G24 Power"], "notas": "Mesma matriz de display."},
     {"categoria": "Display", "nome": "Tela, Tampa Traseira e Chassi Moto G10 / G20 / G30",
      "modelos": ["Moto G10", ("Moto G20", "Exige lote 90Hz."), ("Moto G30", "Exige lote 90Hz.")],
      "notas": "Telas, tampas traseiras e chassis idênticos."},
@@ -133,6 +123,28 @@ MOTOROLA = [
      "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Mesma placa sub de carga."},
     {"categoria": "Biometria", "nome": "Leitor Biométrico Traseiro Moto G7 Play / G7 Power",
      "modelos": ["Moto G7 Play", "Moto G7 Power"]},
+    # --- Inventário consolidado (nov/2026)
+    {"categoria": "Display", "nome": "Tela Frontal Moto G32 / G52 / G62 / G72 / G82 / G73",
+     "modelos": ["Moto G32", "Moto G52", "Moto G62", "Moto G72", "Moto G82", "Moto G73"],
+     "notas": "Agrupamento de compatibilidade física — diferencie a versão LCD ou OLED conforme o aparelho do cliente."},
+    {"categoria": "Display", "nome": "Tela Frontal P-OLED Motorola Edge 40 / Edge 40 Neo",
+     "modelos": ["Motorola Edge 40", "Motorola Edge 40 Neo"], "notas": "Painel P-OLED unificado."},
+    {"categoria": "Bateria", "nome": "Bateria QB50", "modelos": ["Moto G84"]},
+    {"categoria": "Bateria", "nome": "Bateria QM50", "modelos": ["Motorola Edge 40 Neo"]},
+    {"categoria": "Bateria", "nome": "Bateria QC50", "modelos": ["Motorola Edge 50 Fusion"]},
+    {"categoria": "Bateria", "nome": "Bateria SP50", "modelos": ["Motorola Edge 60 Neo"]},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto E20 / E40",
+     "modelos": ["Moto E20", "Moto E40"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G04 / G04s",
+     "modelos": ["Moto G04", "Moto G04s"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G05 5G / G15",
+     "modelos": ["Moto G05 5G", "Moto G15"], "notas": "Placa sub unificada."},
+    {"categoria": "Câmera", "nome": "Lentes Traseiras Moto G10 / G20 / G30",
+     "modelos": ["Moto G10", "Moto G20", "Moto G30"], "notas": "Lentes traseiras unificadas."},
+    {"categoria": "Carcaça", "nome": "Tampa Traseira Moto G10 / G20 / G30",
+     "modelos": ["Moto G10", "Moto G20", "Moto G30"], "notas": "Tampas traseiras unificadas."},
+    {"categoria": "Carcaça", "nome": "Tampa Traseira Moto G04 / G24",
+     "modelos": ["Moto G04", "Moto G24"], "notas": "Tampas traseiras unificadas."},
 ]
 
 # --------------------------------------------------------------------------- XIAOMI / REDMI / POCO
@@ -154,8 +166,8 @@ XIAOMI = [
     {"categoria": "Bateria", "nome": "Bateria BN47 / BM47",
      "modelos": ["Mi A2 Lite", "Redmi 6 Pro", "Redmi 4X"]},
     # Placas sub (conector de carga)
-    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Poco X3 NFC / Poco X3 Pro",
-     "modelos": ["Poco X3 NFC", "Poco X3 Pro"], "notas": "Placa sub e flex main idênticos."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Poco X3 / X3 NFC / X3 Pro",
+     "modelos": ["Poco X3", "Poco X3 NFC", "Poco X3 Pro"], "notas": "Placa sub e flex main idênticos."},
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga Redmi Note 9S / Note 9 Pro / Poco M2 Pro",
      "modelos": ["Redmi Note 9S", "Redmi Note 9 Pro", "Poco M2 Pro"], "notas": "Placa sub intercambiável."},
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga 220733SL — Redmi A1 / A1+ / A2+ / Poco C50",
@@ -173,6 +185,25 @@ XIAOMI = [
      "modelos": ["Redmi Note 9S", "Poco M2 Pro"]},
     {"categoria": "Câmera", "nome": "Lente Secundária 2MP (Macro / Profundidade) — Poco X3 / X3 Pro / Note 9 / Poco M3",
      "modelos": ["Poco X3", "Poco X3 Pro", "Redmi Note 9", "Poco M3"], "notas": "Lentes secundárias genéricas 2MP."},
+    # --- Inventário consolidado (nov/2026)
+    {"categoria": "Display", "nome": "Tela Frontal Redmi 13C / Poco C65",
+     "modelos": ["Redmi 13C", "Poco C65"], "notas": "Painel unificado."},
+    {"categoria": "Display", "nome": "Tela Frontal Redmi 14C / Poco C75",
+     "modelos": ["Redmi 14C", "Poco C75"], "notas": "Painel unificado."},
+    {"categoria": "Display", "nome": "Tela Frontal Redmi Note 13 Pro 5G / Poco X6 5G",
+     "modelos": ["Redmi Note 13 Pro 5G", "Poco X6 5G"], "notas": "Painel unificado."},
+    {"categoria": "Bateria", "nome": "Bateria BN56",
+     "modelos": ["Redmi 9A", "Redmi 9C"]},
+    {"categoria": "Bateria", "nome": "Bateria BN5A",
+     "modelos": ["Redmi Note 10 5G", "Poco M3 Pro"]},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Redmi 12C / Poco C55",
+     "modelos": ["Redmi 12C", "Poco C55"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Redmi 13C / Poco C65",
+     "modelos": ["Redmi 13C", "Poco C65"], "notas": "Placa sub unificada."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Redmi 14C / Poco C75",
+     "modelos": ["Redmi 14C", "Poco C75"], "notas": "Placa sub unificada."},
+    {"categoria": "Câmera", "nome": "Módulos e Lentes de Câmera Redmi 14C / Poco C75",
+     "modelos": ["Redmi 14C", "Poco C75"], "notas": "Módulos e lentes unificados."},
 ]
 
 # --------------------------------------------------------------------------- APPLE
@@ -206,6 +237,8 @@ REALME = [
      "modelos": ["C11 (2021)", "C20", "C21"], "notas": "Mesma placa sub e conector Micro-USB."},
     {"categoria": "Câmera", "nome": "Câmera Frontal 5MP (sensor em gota) Realme C11 (2021) / C20 / C21Y",
      "modelos": ["C11 (2021)", "C20", "C21Y"]},
+    {"categoria": "Display", "nome": "Tela Frontal Realme C61 / C63",
+     "modelos": ["C61", "C63"], "notas": "Frontal unificada."},
 ]
 
 MASTER_GROUPS = (
@@ -216,6 +249,16 @@ MASTER_GROUPS = (
     + [dict(g, marca="LG") for g in LG]
     + [dict(g, marca="Realme") for g in REALME]
 )
+
+# Peças que ganharam novos modelos e mudaram de nome: o registro antigo é renomeado
+# (mantendo id e vínculos) em vez de criar uma peça duplicada.
+RENAMES = {
+    "Tela Frontal Galaxy A02s (SM-A025) / A03s (SM-A037) — sem aro":
+        "Tela Frontal Galaxy A02s / A03s / A03 Core / A04e — sem aro",
+    "Tela Frontal Moto G13 / G23 — sem aro": "Tela Frontal Moto G13 / G23 / G34 / G45 / G53 — sem aro",
+    "Tela Frontal Moto G04 / G04s / G24 — sem aro": "Tela Frontal Moto G04 / G04s / G24 / G24 Power — sem aro",
+    "Placa Sub de Carga Poco X3 NFC / Poco X3 Pro": "Placa Sub de Carga Poco X3 / X3 NFC / X3 Pro",
+}
 
 # Alertas de bancada importantes da lista (também alimentam a IA).
 MASTER_ARTICLES = [
@@ -243,6 +286,25 @@ MASTER_ARTICLES = [
     {"target_device": "LG K41S / K51S", "category": "Compatibilidade",
      "ai_context_text": "As telas do LG K41S e do K51S são incompatíveis, mas o leitor biométrico e o flex de volume servem em ambos.",
      "tags": "lg k41s, lg k51s, biometria, flex volume, tela incompatível"},
+    # --- Regras do inventário consolidado (nov/2026)
+    {"target_device": "Motorola Moto G32 / G52 / G62 / G72 / G82 / G73", "category": "Compatibilidade",
+     "ai_context_text": "As frontais do Moto G32, G52, G62, G72, G82 e G73 formam um agrupamento de compatibilidade física. Antes de trocar, diferencie a versão LCD ou OLED de acordo com o aparelho do cliente.",
+     "tags": "moto g32, moto g52, moto g62, moto g72, moto g82, moto g73, tela, lcd, oled"},
+    {"target_device": "Samsung Galaxy A14 4G / A14 5G", "category": "Compatibilidade",
+     "ai_context_text": "A placa sub (conector de carga) do Galaxy A14 4G e a do A14 5G são componentes diferentes e incompatíveis entre si. Confirme a versão do aparelho antes de pedir a peça.",
+     "tags": "galaxy a14, a14 4g, a14 5g, placa sub, conector de carga, incompatível"},
+    {"target_device": "Apple iPhone 11 ao 17 Pro Max", "category": "Compatibilidade",
+     "ai_context_text": "Displays de iPhone 11 ao 17 Pro Max são cadastrados individualmente por modelo e por tecnologia (Hard OLED, Soft OLED, Incell, Basic, Repart). Não há compatibilidade cruzada entre modelos, exceto iPhone 12 e 12 Pro, que usam o mesmo painel OLED (exige regravação do True Tone).",
+     "tags": "iphone, display, tela, hard oled, soft oled, incell, repart, true tone"},
+    {"target_device": "Apple iPhone / Apple Watch / iPad", "category": "Compatibilidade",
+     "ai_context_text": "Baterias Apple (Deji, Decode e originais) de iPhone 5 ao 16 Pro Max, Apple Watch (S3 ao S10 e Ultra) e iPads (Air, Mini, Pro) são exclusivas por modelo — a única unificada é a A2479 (iPhone 12 / 12 Pro). Elas vêm 'Com Flex' ou 'Decode / Sem Flex'; nas versões sem flex é preciso transplantar o BMS da bateria original.",
+     "tags": "iphone, apple watch, ipad, bateria, deji, decode, com flex, sem flex, bms"},
+    {"target_device": "Apple iPhone 11 ao 17 Pro Max", "category": "Compatibilidade",
+     "ai_context_text": "Câmeras de iPhone 11 ao 17 Pro Max (lente safira, lente + frame + OCA e módulos) e flexes (ALS de proximidade/luminosidade, NFC / bobina de indução / flash, power / volume / botão de ação) são separados estritamente por modelo — não há intercâmbio entre modelos. Biometria e botão Home são organizados do iPhone 6 ao 8 Plus / SE.",
+     "tags": "iphone, câmera, lente safira, flex als, flex nfc, bobina indução, flash, flex power, volume, botão de ação, home, biometria"},
+    {"target_device": "Apple iPhone", "category": "Compatibilidade",
+     "ai_context_text": "Vidros traseiros de iPhone são agrupados por modelo (Vidro Traseiro [Modelo]) com variações: com aro e ímã, furo maior OEM e cores. Carcaças são agrupadas como Carcaça Completa [Modelo] com variações: com flex, sem flex, gaveta SIM, e-SIM e cor. Confira a variação certa para o aparelho do cliente.",
+     "tags": "iphone, vidro traseiro, carcaça, aro, ímã, furo maior, e-sim, gaveta sim"},
 ]
 
 
@@ -256,6 +318,12 @@ def _find_device(db, marca: str, modelo: str):
 def seed_compat_master(db) -> dict:
     """Cria (sem duplicar) aparelhos, peças, vínculos e dicas da lista mestra."""
     new_devices = new_parts = new_links = new_articles = 0
+
+    for old_name, new_name in RENAMES.items():
+        old = db.query(Part).filter_by(nome=old_name).first()
+        if old and not db.query(Part).filter_by(nome=new_name).first():
+            old.nome = new_name
+    db.flush()
 
     for group in MASTER_GROUPS:
         part = db.query(Part).filter_by(nome=group["nome"]).first()
