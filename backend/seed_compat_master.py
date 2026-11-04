@@ -59,6 +59,39 @@ SAMSUNG = [
 # --------------------------------------------------------------------------- MOTOROLA
 MOTOROLA = [
     # Baterias
+    {"categoria": "Bateria", "nome": "Bateria JK50", "modelos": ["Moto G7 Power", "Moto G8 Power Lite", "Moto G9 Play", "Moto G10", "Moto G20", "Moto G30", "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"], "notas": "Lista informada como 6000mAh — confira a capacidade impressa na etiqueta da bateria original."},
+    {"categoria": "Bateria", "nome": "Bateria NH50", "modelos": ["Moto G22", "Moto G13", "Moto G53", "Moto E13", "Moto E32", "Moto E32s"]},
+    {"categoria": "Bateria", "nome": "Bateria MC50 (6000mAh)", "modelos": ["Moto G60", "Moto G9 Power", "Moto G40 Fusion"]},
+    {"categoria": "Bateria", "nome": "Bateria KS50", "modelos": ["Motorola One Vision", "Motorola One Action"]},
+    {"categoria": "Bateria", "nome": "Bateria HG40", "modelos": ["Moto G5s", "Moto G5s Plus", "Moto G6"]},
+    {"categoria": "Bateria", "nome": "Bateria JG40", "modelos": ["Moto G7 Play", "Motorola One"]},
+    {"categoria": "Bateria", "nome": "Bateria QB50", "modelos": ["Moto G84"]},
+    {"categoria": "Bateria", "nome": "Bateria QM50", "modelos": ["Motorola Edge 40 Neo"]},
+    {"categoria": "Bateria", "nome": "Bateria QC50", "modelos": ["Motorola Edge 50 Fusion"]},
+    {"categoria": "Bateria", "nome": "Bateria SP50", "modelos": ["Motorola Edge 60 Neo"]},
+    # Telas frontais e carcaças (sem aro)
+    {"categoria": "Display", "nome": "Tela Frontal OLED Moto G31 / G41 / G71 — sem aro", "modelos": ["Moto G31", "Moto G41", "Moto G71"], "notas": "Frontais idênticas."},
+    {"categoria": "Display", "nome": "Tela Frontal LCD 120Hz Moto G60 / G60s — sem aro", "modelos": ["Moto G60", "Moto G60s"], "notas": "Frontais idênticas — testar a taxa de atualização."},
+    {"categoria": "Display", "nome": "Tela e Chassi Moto G8 Play / One Macro", "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Telas e chassis idênticos."},
+    {"categoria": "Display", "nome": "Tela Frontal LCD Moto G9 Play / E7 Plus — sem aro", "modelos": ["Moto G9 Play", "Moto E7 Plus"], "notas": "Mesmo painel LCD."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto E6s / E6i — sem aro", "modelos": ["Moto E6s", "Moto E6i"], "notas": "Frontais idênticas."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G13 / G23 — sem aro", "modelos": ["Moto G13", "Moto G23"], "notas": "Frontais idênticas."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G04 / G04s / G24 — sem aro", "modelos": ["Moto G04", "Moto G04s", "Moto G24"], "notas": "Mesmo painel frontal."},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G34 / G45 / G53 — sem aro", "modelos": ["Moto G34", "Moto G45", "Moto G53"]},
+    {"categoria": "Display", "nome": "Tela Frontal Moto G32 / G52 / G62 / G72 / G82 / G73 — sem aro", "modelos": ["Moto G32", "Moto G52", "Moto G62", "Moto G72", "Moto G82", "Moto G73"]},
+    {"categoria": "Display", "nome": "Tela Frontal Moto Edge 40 / Edge 40 Neo — sem aro", "modelos": ["Moto Edge 40", "Moto Edge 40 Neo"]},
+    {"categoria": "Display", "nome": "Tela, Tampa Traseira e Chassi Moto G10 / G20 / G30", "modelos": ["Moto G10", ("Moto G20", "Exige lote 90Hz."), ("Moto G30", "Exige lote 90Hz.")], "notas": "Telas, tampas traseiras e chassis idênticos."},
+    # Placas sub (carga) e periféricos
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G52 / G82", "modelos": ["Moto G52", "Moto G82"], "notas": "Mesma placa sub de carga."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G10 / G20", "modelos": ["Moto G10", "Moto G20"], "notas": "Mesma placa sub de carga."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G8 Play / One Macro", "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Mesma placa sub de carga."},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G05 5G / G15", "modelos": ["Moto G05 5G", "Moto G15"]},
+    {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto E20 / E40", "modelos": ["Moto E20", "Moto E40"]},
+    {"categoria": "Biometria", "nome": "Leitor Biométrico Traseiro Moto G7 Play / G7 Power", "modelos": ["Moto G7 Play", "Moto G7 Power"]},
+]
+
+MOTOROLA = [
+    # Baterias
     {"categoria": "Bateria", "nome": "Bateria JK50",
      "modelos": ["Moto G7 Power", "Moto G8 Power Lite", "Moto G9 Play", "Moto G10", "Moto G20", "Moto G30",
                  "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"],
