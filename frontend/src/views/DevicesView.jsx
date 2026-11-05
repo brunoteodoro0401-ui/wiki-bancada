@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { useResource } from '../hooks'
 import { filterBySearch, normalize } from '../utils'
 import EntityFormModal, { ghostBtn, primaryBtn } from '../components/EntityFormModal'
 import Modal from '../components/Modal'
+
+const chipBase = 'rounded-full px-3 py-1 text-xs font-medium transition-colors'
+const chipOn = 'bg-blue-600 text-white shadow-2xs'
+const chipOff = 'bg-slate-100 text-slate-700 hover:bg-slate-200'
 
 const FIELDS = [
   { name: 'marca', label: 'Marca', required: true },
@@ -187,8 +191,21 @@ export default function DevicesView({ search, onAskDevice }) {
   const [editing, setEditing] = useState(null)
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [actionError, setActionError] = useState(null)
+  const [selectedBrand, setSelectedBrand] = useState('')
 
-  const filtered = filterBySearch(items, search, ['marca', 'modelo', 'opening_method'])
+  // Lista única de marcas disponíveis ordenada
+  const brands = useMemo(() => {
+    const list = [...new Set(items.map((d) => d.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    return list
+  }, [items])
+
+  const filtered = useMemo(() => {
+    let list = filterBySearch(items, search, ['marca', 'modelo', 'opening_method'])
+    if (selectedBrand) {
+      list = list.filter((d) => (d.marca || '').toLowerCase() === selectedBrand.toLowerCase())
+    }
+    return list
+  }, [items, search, selectedBrand])
 
   async function save(values) {
     const body = { ...values, opening_method: values.opening_method || null }
@@ -214,6 +231,34 @@ export default function DevicesView({ search, onAskDevice }) {
         <h2 className="text-xl font-semibold text-slate-900">Aparelhos</h2>
         {isAdmin && <button onClick={() => setEditing({})} className={primaryBtn}>+ Novo aparelho</button>}
       </div>
+
+      {/* Filtro por marca */}
+      {!loading && brands.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por marca">
+          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Marca</span>
+          <button
+            type="button"
+            onClick={() => setSelectedBrand('')}
+            className={`${chipBase} ${selectedBrand === '' ? chipOn : chipOff}`}
+          >
+            Todas ({items.length})
+          </button>
+          {brands.map((b) => {
+            const count = items.filter((d) => d.marca === b).length
+            return (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setSelectedBrand(selectedBrand === b ? '' : b)}
+                className={`${chipBase} ${selectedBrand === b ? chipOn : chipOff}`}
+              >
+                {b} ({count})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {loading && <p className="text-slate-500">Carregando...</p>}
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
       {actionError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-red-700">{actionError}</p>}
