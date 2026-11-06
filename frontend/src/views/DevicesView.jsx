@@ -27,15 +27,23 @@ const FIELDS = [
 ]
 
 export function DeviceCard({ device, onSelect, onEdit, onDelete }) {
+  const isFrontal = (device.opening_method || '').toLowerCase().includes('frontal')
+
   return (
-    <article className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div>
         <p className="text-xs uppercase tracking-wide text-slate-400">{device.marca}</p>
         <h3 className="text-lg font-semibold text-slate-900">{device.modelo}</h3>
       </div>
       <div className="flex flex-wrap gap-2">
         {device.opening_method ? (
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              isFrontal
+                ? 'border border-rose-200 bg-rose-50 text-rose-700'
+                : 'border border-blue-200 bg-blue-50 text-blue-700'
+            }`}
+          >
             Abertura {device.opening_method}
           </span>
         ) : (
@@ -185,13 +193,14 @@ function DeviceDetailModal({ device, onClose, onAskDevice }) {
   )
 }
 
-export default function DevicesView({ search, onAskDevice }) {
+export default function DevicesView({ search: externalSearch, onAskDevice }) {
   const { isAdmin } = useAuth()
   const { items, loading, error, reload } = useResource('/devices')
   const [editing, setEditing] = useState(null)
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [selectedBrand, setSelectedBrand] = useState('')
+  const [query, setQuery] = useState('')
 
   // Lista única de marcas disponíveis ordenada
   const brands = useMemo(() => {
@@ -199,13 +208,22 @@ export default function DevicesView({ search, onAskDevice }) {
     return list
   }, [items])
 
+  const activeSearch = (query || externalSearch || '').trim()
+
   const filtered = useMemo(() => {
-    let list = filterBySearch(items, search, ['marca', 'modelo', 'opening_method'])
+    let list = filterBySearch(items, activeSearch, ['marca', 'modelo', 'opening_method'])
     if (selectedBrand) {
       list = list.filter((d) => (d.marca || '').toLowerCase() === selectedBrand.toLowerCase())
     }
     return list
-  }, [items, search, selectedBrand])
+  }, [items, activeSearch, selectedBrand])
+
+  const hasFilters = Boolean(activeSearch || selectedBrand)
+
+  function clearFilters() {
+    setQuery('')
+    setSelectedBrand('')
+  }
 
   async function save(values) {
     const body = { ...values, opening_method: values.opening_method || null }
@@ -226,15 +244,34 @@ export default function DevicesView({ search, onAskDevice }) {
   }
 
   return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Aparelhos</h2>
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Aparelhos Cadastrados</h2>
+          <p className="text-sm text-slate-500">
+            Catálogo completo com métodos de abertura, avisos de flex e fichas 360º para a bancada.
+          </p>
+        </div>
         {isAdmin && <button onClick={() => setEditing({})} className={primaryBtn}>+ Novo aparelho</button>}
+      </div>
+
+      {/* Campo de busca integrado */}
+      <div className="relative">
+        <label htmlFor="devices-search" className="sr-only">Buscar aparelho por modelo ou marca</label>
+        <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+        <input
+          id="devices-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar aparelho por modelo, linha ou marca… ex.: Galaxy A54, Moto G34, iPhone 14, Poco X3"
+          className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-base shadow-2xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        />
       </div>
 
       {/* Filtro por marca */}
       {!loading && brands.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por marca">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por marca">
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Marca</span>
           <button
             type="button"
@@ -259,10 +296,26 @@ export default function DevicesView({ search, onAskDevice }) {
         </div>
       )}
 
-      {loading && <p className="text-slate-500">Carregando...</p>}
+      {/* Contador e Limpar Filtros */}
+      <div className="flex items-center justify-between text-sm text-slate-500" aria-live="polite">
+        <span>
+          {loading ? 'Carregando...' : `${filtered.length} aparelho(s)${hasFilters ? ` de ${items.length}` : ''}`}
+        </span>
+        {hasFilters && (
+          <button type="button" onClick={clearFilters} className="font-medium text-blue-600 hover:underline">
+            Limpar busca e filtros
+          </button>
+        )}
+      </div>
+
+      {loading && <p className="text-slate-500">Carregando catálogo...</p>}
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
       {actionError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-red-700">{actionError}</p>}
-      {!loading && !error && filtered.length === 0 && <p className="text-slate-500">Nenhum aparelho encontrado.</p>}
+      {!loading && !error && filtered.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+          Nenhum aparelho encontrado{activeSearch ? ` para "${activeSearch}"` : ''}.
+        </p>
+      )}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((d) => (
           <DeviceCard

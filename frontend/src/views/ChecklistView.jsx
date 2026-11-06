@@ -559,8 +559,8 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
       savedHistory.length > 0 ? savedHistory : [buildOrderObjectFromForm()]
     const rarBytes = createRarBackupBytes(listToExport)
     const { isoDate: dateTag } = getNowInfo()
-    const filename = `Backup_OS_WikiBancada_${dateTag}.rar`
-    triggerBrowserDownload(rarBytes, filename, 'application/x-rar-compressed')
+    const filename = `Backup_OS_WikiBancada_${dateTag}.json`
+    triggerBrowserDownload(rarBytes, filename, 'application/json')
     showNotice(`📦 Arquivo de backup "${filename}" (${listToExport.length} O.S.) salvo no seu computador!`)
   }
 
@@ -569,7 +569,7 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
       savedHistory.length > 0 ? savedHistory : [buildOrderObjectFromForm()]
     const rarBytes = createRarBackupBytes(listToExport)
     const { isoDate: dateTag } = getNowInfo()
-    const filename = `Backup_OS_WikiBancada_${dateTag}.rar`
+    const filename = `Backup_OS_WikiBancada_${dateTag}.json`
 
     if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
       try {
@@ -577,8 +577,8 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
           suggestedName: filename,
           types: [
             {
-              description: 'Arquivo de Backup RAR (.rar)',
-              accept: { 'application/x-rar-compressed': ['.rar'] },
+              description: 'Arquivo de Backup JSON (.json)',
+              accept: { 'application/json': ['.json'] },
             },
           ],
         })
@@ -594,7 +594,7 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
       }
     }
 
-    triggerBrowserDownload(rarBytes, filename, 'application/x-rar-compressed')
+    triggerBrowserDownload(rarBytes, filename, 'application/json')
     if (typeof window !== 'undefined' && window.open) {
       window.open(provider.url, '_blank', 'noopener,noreferrer')
     }
@@ -769,7 +769,7 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
               📂 {dirHandle ? `Trocar Pasta (${linkedFolderName})` : 'Escolher Pasta no Computador'}
             </button>
             <button type="button" onClick={handleDownloadBackupRar} className={primaryBtn}>
-              📦 Baixar Backup Local (.rar)
+              📦 Baixar Backup Local (.json)
             </button>
             <input
               ref={restoreInputRef}

@@ -345,6 +345,21 @@ def seed_compat_master_list(db):
     return seed_compat_master(db)
 
 
+def seed_all_devices(db):
+    """Garante que todos os 375 aparelhos consolidados existam no catálogo de aparelhos."""
+    added = 0
+    try:
+        from seed_devices_extra import ALL_DEVICES
+        for marca, modelo, opening, flex in ALL_DEVICES:
+            if not db.query(Device).filter_by(marca=marca, modelo=modelo).first():
+                db.add(Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex))
+                added += 1
+        db.flush()
+    except ImportError:
+        pass
+    return added
+
+
 def seed_trusted_sources(db):
     """Popula as fontes confiáveis padrão para a busca da IA na internet."""
     for nome, domain, categoria in DEFAULT_TRUSTED_SOURCES:

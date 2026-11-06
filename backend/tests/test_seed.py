@@ -121,3 +121,15 @@ def test_compat_master_renames_old_part_instead_of_duplicating(db):
     assert db.query(models.Part).filter_by(nome="Tela Frontal Moto G13 / G23 — sem aro").count() == 0
     renamed = db.query(models.Part).filter_by(nome="Tela Frontal Moto G13 / G23 / G34 / G45 / G53 — sem aro").one()
     assert renamed.id == old_id
+
+
+
+def test_seed_all_devices_is_complete_and_idempotent(db):
+    first = seed.seed_all_devices(db)
+    db.commit()
+    assert first >= 370
+    assert db.query(models.Device).count() >= 370
+
+    # Segunda execução não duplica
+    second = seed.seed_all_devices(db)
+    assert second == 0

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { ghostBtn, inputClass, primaryBtn } from '../components/EntityFormModal'
+import { FormattedAiResponse } from '../components/FormattedAiResponse'
 
 const SUGGESTIONS = [
   'Posso usar calor na tela do iPhone 11?',
@@ -11,10 +12,12 @@ const SUGGESTIONS = [
 ]
 
 const DEFAULT_GEMINI_MODELS = [
-  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (Recomendado — Rápido e Inteligente)' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (Equilibrado)' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Recomendado — Ultrarrápido e Recente)' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Nova Geração)' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Muito Rápido e Estável)' },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Alta Disponibilidade)' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Raciocínio Profundo)' },
-  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Ultra-leve)' },
+  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
 ]
 
 const DEFAULT_HF_MODELS = [
@@ -53,7 +56,7 @@ export default function AssistantView({ onRequireLogin, initialQuestion = '', on
   const [aiSettings, setAiSettings] = useState(null)
   const [showModelConfig, setShowModelConfig] = useState(false)
   const [provider, setProvider] = useState('auto')
-  const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash')
+  const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash')
   const [hfModel, setHfModel] = useState('Qwen/Qwen2.5-72B-Instruct')
   const [customHfModel, setCustomHfModel] = useState('')
   const [geminiKeyInput, setGeminiKeyInput] = useState('')
@@ -485,7 +488,11 @@ export default function AssistantView({ onRequireLogin, initialQuestion = '', on
                   📷 {m.imageName || 'Foto anexada'}
                 </div>
               )}
-              <div>{m.text}</div>
+              {m.role === 'bot' && !m.error ? (
+                <FormattedAiResponse text={m.text} />
+              ) : (
+                <div>{m.text}</div>
+              )}
               {m.role === 'bot' && m.mode && (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
                   <div className="flex flex-wrap items-center gap-2">

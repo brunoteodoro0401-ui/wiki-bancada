@@ -46,7 +46,7 @@ function Shell() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold text-slate-900">🔧 Wiki de Bancada</h1>
             <div className="flex items-center gap-3">
-              {tab !== 'assistant' && tab !== 'sources' && tab !== 'checklist' && tab !== 'parts' && (
+              {tab === 'wiki' && (
                 <>
                   <label htmlFor="search" className="sr-only">Buscar</label>
                   <input
@@ -54,7 +54,7 @@ function Shell() {
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar por aparelho, peça, dica ou tag..."
+                    placeholder="Buscar dica, defeito crônico, micro-solda ou tag..."
                     className={`${inputClass} sm:w-80`}
                   />
                 </>

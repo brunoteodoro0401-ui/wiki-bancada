@@ -24,22 +24,27 @@ from sqlalchemy.orm import Session
 import models
 
 ENV_FILE = Path(__file__).parent / ".env"
-DEFAULT_MODEL = "gemini-3.6-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 FALLBACK_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-pro",
+    "gemini-1.5-pro",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
 ]
 DEFAULT_HF_MODEL = "Qwen/Qwen2.5-72B-Instruct"
 
 AVAILABLE_MODELS = {
     "gemini": [
-        {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash (Recomendado — Rápido e Inteligente)"},
-        {"id": "gemini-3.5-flash", "label": "Gemini 3.5 Flash (Equilibrado)"},
+        {"id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash (Recomendado — Ultrarrápido e Inteligente)"},
+        {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash (Nova Geração)"},
+        {"id": "gemini-2.0-flash", "label": "Gemini 2.0 Flash (Muito Rápido e Estável)"},
+        {"id": "gemini-1.5-flash", "label": "Gemini 1.5 Flash (Alta Disponibilidade)"},
         {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro (Raciocínio Profundo)"},
-        {"id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash Lite (Ultra-leve)"},
+        {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash"},
     ],
     "huggingface": [
         {"id": "Qwen/Qwen2.5-72B-Instruct", "label": "Qwen 2.5 72B Instruct (Excelente em PT-BR e Técnica)"},

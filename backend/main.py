@@ -34,6 +34,7 @@ async def lifespan(_: FastAPI):
             seed.seed_catalog(db)
             seed.seed_extended_knowledge(db)
             seed.seed_compat_master_list(db)
+            seed.seed_all_devices(db)
             seed.seed_trusted_sources(db)
             seed.ensure_owner_admin(db)
             db.commit()
@@ -239,7 +240,7 @@ def list_compat(
     device_id: int | None = None,
     part_id: int | None = None,
     skip: int = 0,
-    limit: int = 200,
+    limit: int = 2000,
     db: Session = Depends(get_db),
 ):
     q = (
@@ -295,7 +296,7 @@ def create_article(data: schemas.WikiBase, db: Session = Depends(get_db), _: mod
 
 
 @app.get("/wiki_articles", response_model=List[schemas.WikiOut])
-def list_articles(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
+def list_articles(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db)):
     return db.query(models.WikiArticle).order_by(models.WikiArticle.id).offset(skip).limit(limit).all()
 
 

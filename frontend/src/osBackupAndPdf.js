@@ -259,13 +259,13 @@ export function downloadOsPdf(order, checklistItems, statusLabels) {
   return { bytes, filename }
 }
 
-const RAR_SIGNATURE_HEADER = 'Rar!\x1A\x07\x00WIKI_BANCADA_OS_BACKUP_V1\n'
+const _RAR_SIGNATURE_HEADER = 'Rar!\x1A\x07\x00WIKI_BANCADA_OS_BACKUP_V1\n'
 
 /**
- * Empacota todas as Ordens de Serviço em um arquivo de backup local .rar
- * contendo o cabeçalho de arquivo + manifesto estruturado JSON para restauração 100% fiel.
+ * Empacota todas as Ordens de Serviço em um arquivo de backup local estruturado JSON.
+ * É 100% legível por qualquer editor ou pelo próprio sistema.
  */
-export function createRarBackupBytes(orders) {
+export function createJsonBackupBytes(orders) {
   const payload = {
     format: 'WIKI_BANCADA_OS_ARCHIVE',
     version: 1,
@@ -274,8 +274,14 @@ export function createRarBackupBytes(orders) {
     orders,
   }
   const jsonText = JSON.stringify(payload, null, 2)
-  const fullContent = `${RAR_SIGNATURE_HEADER}${jsonText}`
-  return new TextEncoder().encode(fullContent)
+  return new TextEncoder().encode(jsonText)
+}
+
+/**
+ * Empacota em formato compatível com versões legadas.
+ */
+export function createRarBackupBytes(orders) {
+  return createJsonBackupBytes(orders)
 }
 
 /**
