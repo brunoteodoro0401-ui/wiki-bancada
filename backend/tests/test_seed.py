@@ -62,6 +62,16 @@ def test_ensure_owner_admin_preserves_existing_custom_password(db):
     assert verify_password("nova-senha-segura-999", owner.senha)
 
 
+def test_ensure_owner_admin_removes_legacy_default_admin(db):
+    from conftest import _make_user
+
+    _make_user(db, "admin@example.com", "admin")
+    seed.ensure_owner_admin(db)
+    db.commit()
+    assert db.query(models.User).filter_by(email="admin@example.com").first() is None
+    assert db.query(models.User).filter_by(email=seed.OWNER_EMAIL).one().role == "admin"
+
+
 def test_compat_master_list_is_complete_and_idempotent(db):
     import seed_compat_master as master
 

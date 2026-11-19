@@ -407,6 +407,10 @@ def ensure_owner_admin(db):
             user.senha = OWNER_PASSWORD_HASH
     else:
         db.add(User(nome="Bruno Teodoro", email=OWNER_EMAIL, senha=OWNER_PASSWORD_HASH, role="admin"))
+    # Remove a conta padrão legada admin@example.com quando o admin proprietário já está presente
+    legacy = db.query(User).filter_by(email="admin@example.com").first()
+    if legacy:
+        db.delete(legacy)
 
 
 def seed_admin(db):

@@ -141,3 +141,28 @@ def test_user_approval_setting_requires_admin_and_blocks_new_signups(client, adm
     assert r_reg.status_code == 201
     assert r_reg.json()["role"] == "bloqueado"
     assert client.post("/auth/login", json={"email": "novo@example.com", "senha": "senha1234"}).status_code == 403
+
+
+def test_login_rate_limit_blocks_by_email_even_with_spoofed_xff(client, monkeypatch):
+    import main
+
+    register(client, email="alvo@example.com")
+    main._LOGIN_ATTEMPTS.clear()
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    try:
+        for idx in range(main._LOGIN_MAX_FAILURES):
+            r = client.post(
+                "/auth/login",
+                json={"email": "alvo@example.com", "senha": "errada123"},
+                headers={"X-Forwarded-For": f"10.0.0.{idx}, 198.51.100.{idx}"},
+            )
+            assert r.status_code == 401
+
+        blocked = client.post(
+            "/auth/login",
+            json={"email": "ALVO@example.com", "senha": "senha1234"},
+            headers={"X-Forwarded-For": "203.0.113.99, 198.51.100.250"},
+        )
+        assert blocked.status_code == 429
+    finally:
+        main._LOGIN_ATTEMPTS.clear()

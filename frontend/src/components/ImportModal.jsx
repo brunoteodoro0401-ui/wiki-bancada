@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { ghostBtn, inputClass, primaryBtn } from './EntityFormModal'
 
@@ -39,6 +39,12 @@ export default function ImportModal({ initialMode = 'search', initialQuery = '',
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null) // { extracted_text_preview, source_references, articles }
   const [savedIndices, setSavedIndices] = useState({})
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const currentMode = SOURCE_MODES.find((m) => m.id === sourceType) || SOURCE_MODES[0]
 

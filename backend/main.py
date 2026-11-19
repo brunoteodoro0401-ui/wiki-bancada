@@ -93,7 +93,8 @@ def _require_approval_enabled(db: Session) -> bool:
 
 
 def _client_ip(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    parts = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
+    xff = parts[-1] if parts else ""
     return xff or (request.client.host if request.client else "unknown")
 
 
@@ -114,20 +115,29 @@ def register(data: schemas.RegisterIn, db: Session = Depends(get_db)):
 @app.post("/auth/login", response_model=schemas.TokenOut)
 def login(request: Request, data: schemas.LoginIn, db: Session = Depends(get_db)):
     ip = _client_ip(request)
+    email_norm = data.email.lower()
+    ip_key = f"ip:{ip}"
+    email_key = f"email:{email_norm}"
     now = time.monotonic()
     if "PYTEST_CURRENT_TEST" not in os.environ:
-        recent = [ts for ts in _LOGIN_ATTEMPTS.get(ip, []) if now - ts < _LOGIN_WINDOW_SECONDS]
-        _LOGIN_ATTEMPTS[ip] = recent
-        if len(recent) >= _LOGIN_MAX_FAILURES:
-            raise HTTPException(429, "Muitas tentativas de login. Aguarde 1 minuto e tente novamente.")
+        for key in (ip_key, email_key):
+            recent = [ts for ts in _LOGIN_ATTEMPTS.get(key, []) if now - ts < _LOGIN_WINDOW_SECONDS]
+            if recent:
+                _LOGIN_ATTEMPTS[key] = recent
+            else:
+                _LOGIN_ATTEMPTS.pop(key, None)
+            if len(recent) >= _LOGIN_MAX_FAILURES:
+                raise HTTPException(429, "Muitas tentativas de login. Aguarde 1 minuto e tente novamente.")
 
-    user = db.query(models.User).filter(models.User.email == data.email.lower()).first()
+    user = db.query(models.User).filter(models.User.email == email_norm).first()
     ok = verify_password(data.senha, user.senha if user else _DUMMY_HASH)
     if not user or not ok:
         if "PYTEST_CURRENT_TEST" not in os.environ:
-            _LOGIN_ATTEMPTS.setdefault(ip, []).append(now)
+            _LOGIN_ATTEMPTS.setdefault(ip_key, []).append(now)
+            _LOGIN_ATTEMPTS.setdefault(email_key, []).append(now)
         raise HTTPException(401, "E-mail ou senha inválidos")
-    _LOGIN_ATTEMPTS.pop(ip, None)
+    _LOGIN_ATTEMPTS.pop(ip_key, None)
+    _LOGIN_ATTEMPTS.pop(email_key, None)
     if user.role == "bloqueado":
         raise HTTPException(403, "Sua conta está aguardando aprovação ou foi bloqueada pelo administrador.")
     return {"access_token": create_access_token(user), "token_type": "bearer", "user": user}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { useResource } from '../hooks'
@@ -28,6 +28,12 @@ function CompatImportModal({ onClose, onSaved }) {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [editableItems, setEditableItems] = useState([])
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   async function handleExtract(e) {
     if (e) e.preventDefault()
@@ -570,7 +576,9 @@ export default function PartsView() {
 
         <div className="flex items-center justify-between text-sm text-slate-500" aria-live="polite">
           <span>
-            {loading ? 'Carregando...' : `${results.length} peça(s)${hasFilters ? ` de ${groups.length}` : ''}`}
+            {loading
+              ? 'Carregando...'
+              : `${results.length} peça(s)${hasFilters ? ` de ${groups.length}` : ''}${matchedDevices.length > 0 ? ` • ${matchedDevices.length} aparelho(s) no catálogo` : ''}`}
           </span>
           {hasFilters && (
             <button type="button" onClick={clearFilters} className="font-medium text-blue-600 hover:underline">

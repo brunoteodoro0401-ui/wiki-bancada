@@ -97,6 +97,23 @@ describe('AuthModal', () => {
     await userEvent.click(screen.getByText('Não tem conta? Cadastre-se'))
     expect(screen.getByLabelText('Nome')).toBeTruthy()
   })
+
+  it('exibe confirmação verde e volta para login quando cadastro aguarda aprovação', async () => {
+    api.post.mockResolvedValue({
+      data: { id: 9, nome: 'Carlos', email: 'carlos@example.com', role: 'bloqueado' },
+    })
+    const onClose = setup()
+    await userEvent.click(screen.getByText('Não tem conta? Cadastre-se'))
+    await userEvent.type(screen.getByLabelText('Nome'), 'Carlos')
+    await userEvent.type(screen.getByLabelText('E-mail'), 'carlos@example.com')
+    await userEvent.type(screen.getByLabelText('Senha'), 'senha1234')
+    await userEvent.click(screen.getByRole('button', { name: 'Cadastrar' }))
+
+    const statusBanner = await screen.findByRole('status')
+    expect(statusBanner.textContent).toMatch(/aguardando aprovação/i)
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })
 
 describe('UsersModal', () => {
@@ -181,6 +198,24 @@ describe('ChecklistView', () => {
     rerender(<ChecklistView onAskAI={() => {}} loggedIn />)
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/service_orders'))
     expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('remove do cache local O.S. com serverId que foi excluída no servidor e preserva O.S. offline', async () => {
+    localStorage.setItem(
+      'bancada_checklists_history',
+      JSON.stringify([
+        { id: 99, serverId: 99, osNumber: 'OS-0099', deviceModel: 'Moto G22', status: 'aberta', statuses: {} },
+        { id: 1700000001, serverId: null, osNumber: 'OS-0100', deviceModel: 'Redmi Note 12', status: 'aberta', statuses: {} },
+      ]),
+    )
+    api.get.mockResolvedValue({ data: [] })
+    api.post.mockResolvedValue({ data: { restored: 1 } })
+
+    render(<ChecklistView onAskAI={() => {}} loggedIn />)
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/service_orders'))
+
+    expect(screen.queryByText(/OS-0099/)).toBeNull()
+    expect(await screen.findByText(/OS-0100/)).toBeTruthy()
   })
 })
 

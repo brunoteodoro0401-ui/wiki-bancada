@@ -11,16 +11,29 @@ export default function AuthModal({ onClose }) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [error, setError] = useState(null)
+  const [infoMsg, setInfoMsg] = useState(null)
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    setInfoMsg(null)
     try {
-      if (mode === 'login') await login(email, senha)
-      else await register(nome, email, senha)
-      onClose()
+      if (mode === 'login') {
+        await login(email, senha)
+        onClose()
+      } else {
+        const result = await register(nome, email, senha)
+        if (result?.pendingApproval) {
+          setInfoMsg(result.message)
+          setMode('login')
+          setSenha('')
+          setBusy(false)
+          return
+        }
+        onClose()
+      }
     } catch (err) {
       setError(errorMessage(err))
       setBusy(false)
@@ -31,6 +44,11 @@ export default function AuthModal({ onClose }) {
   return (
     <Modal title={isLogin ? 'Entrar' : 'Criar conta'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {infoMsg && (
+          <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {infoMsg}
+          </p>
+        )}
         {!isLogin && (
           <div>
             <label htmlFor="auth-nome" className="mb-1 block text-sm font-medium text-slate-700">Nome</label>
@@ -48,7 +66,7 @@ export default function AuthModal({ onClose }) {
         </div>
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex items-center justify-between">
-          <button type="button" onClick={() => { setMode(isLogin ? 'register' : 'login'); setError(null) }} className="text-sm text-blue-600 hover:underline">
+          <button type="button" onClick={() => { setMode(isLogin ? 'register' : 'login'); setError(null); setInfoMsg(null) }} className="text-sm text-blue-600 hover:underline">
             {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
           </button>
           <div className="flex gap-2">

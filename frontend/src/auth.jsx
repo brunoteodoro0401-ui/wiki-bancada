@@ -37,15 +37,13 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (nome, email, senha) => {
     const res = await api.post('/auth/register', { nome, email, senha })
     if (res.data?.role === 'bloqueado') {
-      throw {
-        response: {
-          data: {
-            detail: 'Cadastro realizado! Sua conta está aguardando aprovação de um administrador.',
-          },
-        },
+      return {
+        pendingApproval: true,
+        message: 'Cadastro realizado com sucesso! Sua conta está aguardando aprovação de um administrador.',
       }
     }
     await login(email, senha)
+    return { pendingApproval: false }
   }, [login])
 
   const logout = useCallback(() => {

@@ -204,27 +204,26 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
           (item) => !item.serverId && !serverKeys.has(`${item.osNumber}::${item.deviceModel}`),
         )
 
-        if (serverList.length > 0) {
-          setSavedHistory((localList) => {
-            const mapByOs = new Map()
-            for (const item of localList) {
-              mapByOs.set(`${item.osNumber}::${item.deviceModel}`, item)
+        setSavedHistory((localList) => {
+          const localByKey = new Map()
+          const mapByOs = new Map()
+          for (const item of localList) {
+            const key = `${item.osNumber}::${item.deviceModel}`
+            localByKey.set(key, item)
+            if (!item.serverId) {
+              mapByOs.set(key, item)
             }
-            for (const srv of serverList) {
-              const norm = normalizeOrder({ ...srv, serverId: srv.id })
-              const key = `${norm.osNumber}::${norm.deviceModel}`
-              if (!mapByOs.has(key)) {
-                mapByOs.set(key, norm)
-              } else {
-                const existing = mapByOs.get(key)
-                mapByOs.set(key, { ...existing, serverId: srv.id })
-              }
-            }
-            const merged = Array.from(mapByOs.values())
-            persistLocalOrders(merged)
-            return merged
-          })
-        }
+          }
+          for (const srv of serverList) {
+            const norm = normalizeOrder({ ...srv, serverId: srv.id })
+            const key = `${norm.osNumber}::${norm.deviceModel}`
+            const existing = localByKey.get(key)
+            mapByOs.set(key, existing ? { ...existing, ...norm, serverId: srv.id } : norm)
+          }
+          const merged = Array.from(mapByOs.values())
+          persistLocalOrders(merged)
+          return merged
+        })
 
         if (unsynced.length > 0) {
           api

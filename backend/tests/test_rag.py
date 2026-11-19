@@ -266,3 +266,28 @@ def test_ask_with_image_base64_calls_multimodal_llm(client, db, tech_headers, mo
     assert captured["image_base64"] == "aGVsbG8="
     assert captured["image_mime_type"] == "image/jpeg"
     assert "FOTO DE BANCADA ANEXADA" in captured["prompt"]
+
+
+def test_ai_settings_can_clear_saved_api_keys(client, db, admin_headers, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("HF_API_KEY", raising=False)
+
+    r_set = client.put(
+        "/ai_settings",
+        json={"provider": "auto", "gemini_api_key": "gemini-secret-123", "hf_api_key": "hf-secret-123"},
+        headers=admin_headers,
+    )
+    assert r_set.status_code == 200
+    assert r_set.json()["has_gemini_key"] is True
+    assert r_set.json()["has_hf_key"] is True
+
+    r_clr = client.put(
+        "/ai_settings",
+        json={"provider": "auto", "gemini_api_key": "__CLEAR__", "hf_api_key": "__CLEAR__"},
+        headers=admin_headers,
+    )
+    assert r_clr.status_code == 200
+    assert r_clr.json()["has_gemini_key"] is False
+    assert r_clr.json()["has_hf_key"] is False
+    assert db.get(models.AppSetting, "gemini_api_key") is None
+    assert db.get(models.AppSetting, "hf_api_key") is None

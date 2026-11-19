@@ -133,12 +133,22 @@ def save_ai_settings(
     if hf_model:
         updates["hf_model"] = hf_model.strip()
         os.environ["HF_MODEL"] = hf_model.strip()
-    if gemini_api_key is not None and gemini_api_key.strip():
-        updates["gemini_api_key"] = gemini_api_key.strip()
-        os.environ["GEMINI_API_KEY"] = gemini_api_key.strip()
-    if hf_api_key is not None and hf_api_key.strip():
-        updates["hf_api_key"] = hf_api_key.strip()
-        os.environ["HF_API_KEY"] = hf_api_key.strip()
+    if gemini_api_key is not None:
+        val = gemini_api_key.strip()
+        if val in ("__CLEAR__", "LIMPAR"):
+            db.query(models.AppSetting).filter_by(key="gemini_api_key").delete()
+            os.environ.pop("GEMINI_API_KEY", None)
+        elif val:
+            updates["gemini_api_key"] = val
+            os.environ["GEMINI_API_KEY"] = val
+    if hf_api_key is not None:
+        val = hf_api_key.strip()
+        if val in ("__CLEAR__", "LIMPAR"):
+            db.query(models.AppSetting).filter_by(key="hf_api_key").delete()
+            os.environ.pop("HF_API_KEY", None)
+        elif val:
+            updates["hf_api_key"] = val
+            os.environ["HF_API_KEY"] = val
 
     for k, v in updates.items():
         db.merge(models.AppSetting(key=k, value=v))
@@ -303,6 +313,7 @@ def build_documents(db: Session) -> List[Dict]:
         id(db.get_bind()),
         db.query(models.WikiArticle).count(),
         db.query(models.Device).count(),
+        db.query(models.Part).count(),
         db.query(models.Compatibility).count(),
     )
     now = time.monotonic()
@@ -999,6 +1010,8 @@ def ingest_content(
                 db.add(models.WikiArticle(**art))
                 saved_count += 1
         db.commit()
+        if saved_count > 0:
+            invalidate_docs_cache()
 
     return {
         "extracted_text_preview": extracted_text[:1200],
@@ -1191,6 +1204,7 @@ def save_extracted_compatibilities(db: Session, items: List[Dict]) -> int:
             existing_compat.notas = notas
 
     db.commit()
+    invalidate_docs_cache()
     return saved_count
 
 

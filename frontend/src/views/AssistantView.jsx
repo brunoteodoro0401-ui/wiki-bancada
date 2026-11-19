@@ -407,19 +407,38 @@ export default function AssistantView({ onRequireLogin, initialQuestion = '', on
 
             {isAdmin && (
               <div>
-                <label className="mb-1 block font-medium text-slate-700">
-                  Token do Hugging Face (HF_API_KEY){' '}
-                  {aiSettings?.has_hf_key ? (
-                    <span className="text-emerald-700 font-semibold">(✓ Configurado)</span>
-                  ) : (
-                    <span className="text-amber-700">(Crie grátis em huggingface.co/settings/tokens)</span>
+                <label className="mb-1 flex flex-wrap items-center justify-between gap-2 font-medium text-slate-700">
+                  <span>
+                    Token do Hugging Face (HF_API_KEY){' '}
+                    {hfKeyInput === '__CLEAR__' ? (
+                      <span className="font-semibold text-red-600">(Será removida ao salvar)</span>
+                    ) : aiSettings?.has_hf_key ? (
+                      <span className="text-emerald-700 font-semibold">(✓ Configurado)</span>
+                    ) : (
+                      <span className="text-amber-700">(Crie grátis em huggingface.co/settings/tokens)</span>
+                    )}
+                  </span>
+                  {aiSettings?.has_hf_key && hfKeyInput !== '__CLEAR__' && (
+                    <button
+                      type="button"
+                      onClick={() => setHfKeyInput('__CLEAR__')}
+                      className="text-[11px] font-medium text-red-600 hover:underline"
+                    >
+                      Remover chave salva
+                    </button>
                   )}
                 </label>
                 <input
                   type="password"
-                  value={hfKeyInput}
+                  value={hfKeyInput === '__CLEAR__' ? '' : hfKeyInput}
                   onChange={(e) => setHfKeyInput(e.target.value)}
-                  placeholder={aiSettings?.has_hf_key ? '•••••••• (deixe em branco para manter)' : 'Cole seu token hf_...'}
+                  placeholder={
+                    hfKeyInput === '__CLEAR__'
+                      ? 'Chave marcada para remoção (salve para confirmar)'
+                      : aiSettings?.has_hf_key
+                        ? '•••••••• (deixe em branco para manter)'
+                        : 'Cole seu token hf_...'
+                  }
                   className={inputClass}
                 />
               </div>
@@ -429,17 +448,38 @@ export default function AssistantView({ onRequireLogin, initialQuestion = '', on
           {isAdmin && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-t border-blue-100 pt-2">
               <div className="sm:w-1/2">
-                <label className="mb-1 block font-medium text-slate-700">
-                  Chave Google Gemini (GEMINI_API_KEY){' '}
-                  {aiSettings?.has_gemini_key && (
-                    <span className="text-emerald-700 font-semibold">(✓ Configurada)</span>
+                <label className="mb-1 flex flex-wrap items-center justify-between gap-2 font-medium text-slate-700">
+                  <span>
+                    Chave Google Gemini (GEMINI_API_KEY){' '}
+                    {geminiKeyInput === '__CLEAR__' ? (
+                      <span className="font-semibold text-red-600">(Será removida ao salvar)</span>
+                    ) : (
+                      aiSettings?.has_gemini_key && (
+                        <span className="text-emerald-700 font-semibold">(✓ Configurada)</span>
+                      )
+                    )}
+                  </span>
+                  {aiSettings?.has_gemini_key && geminiKeyInput !== '__CLEAR__' && (
+                    <button
+                      type="button"
+                      onClick={() => setGeminiKeyInput('__CLEAR__')}
+                      className="text-[11px] font-medium text-red-600 hover:underline"
+                    >
+                      Remover chave salva
+                    </button>
                   )}
                 </label>
                 <input
                   type="password"
-                  value={geminiKeyInput}
+                  value={geminiKeyInput === '__CLEAR__' ? '' : geminiKeyInput}
                   onChange={(e) => setGeminiKeyInput(e.target.value)}
-                  placeholder={aiSettings?.has_gemini_key ? '•••••••• (deixe em branco para manter)' : 'Cole sua chave AIza... / AQ...'}
+                  placeholder={
+                    geminiKeyInput === '__CLEAR__'
+                      ? 'Chave marcada para remoção (salve para confirmar)'
+                      : aiSettings?.has_gemini_key
+                        ? '•••••••• (deixe em branco para manter)'
+                        : 'Cole sua chave AIza... / AQ...'
+                  }
                   className={inputClass}
                 />
               </div>
