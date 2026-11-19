@@ -77,7 +77,7 @@ def test_compat_master_list_is_complete_and_idempotent(db):
 
     first = seed.seed_compat_master_list(db)
     db.commit()
-    assert first["parts"] == len(master.MASTER_GROUPS) == 110
+    assert first["parts"] == len(master.MASTER_GROUPS) and len(master.MASTER_GROUPS) >= 170
     assert first["devices"] > 50 and first["compatibilities"] > 150
 
     # Busca por nome de peça devolve os modelos da lista mestra
@@ -143,3 +143,50 @@ def test_seed_all_devices_is_complete_and_idempotent(db):
     # Segunda execução não duplica
     second = seed.seed_all_devices(db)
     assert second == 0
+
+
+def test_seed_enriches_model_codes_opening_methods_and_deduplicates(db):
+    # Prepara registros legados que devem ser higienizados na migração
+    db.add_all([
+        models.Device(marca="Xiaomi", modelo="Pocophone F1", opening_method="Traseira", has_flex_cable=True),
+        models.Device(marca="Samsung", modelo="Galaxy J5 Prime", opening_method="Traseira", has_flex_cable=True),
+        models.Device(marca="Samsung", modelo="Galaxy A14", opening_method="Traseira", has_flex_cable=True),
+        models.WikiArticle(target_device="Iphone em geral ", category="Procedimento ", ai_context_text="Dica teste", tags=" A , B "),
+    ])
+    db.flush()
+    a14_gen = db.query(models.Device).filter_by(modelo="Galaxy A14").one()
+    p_a14_5g = models.Part(nome="Tela PLS LCD Galaxy A14 5G (SM-A146) / Galaxy M14 5G", categoria="Display")
+    db.add(p_a14_5g)
+    db.flush()
+    db.add(models.Compatibility(device_id=a14_gen.id, part_id=p_a14_5g.id, notas="teste"))
+    db.commit()
+
+    seed.seed_extended_knowledge(db)
+    seed.seed_compat_master_list(db)
+    seed.seed_all_devices(db)
+    db.commit()
+
+    assert db.query(models.Device).filter_by(modelo="Pocophone F1").first() is None
+    assert db.query(models.Device).filter_by(modelo="Poco F1").one().model_code == "M1805E10A"
+
+    j5p = db.query(models.Device).filter_by(marca="Samsung", modelo="Galaxy J5 Prime").one()
+    assert j5p.opening_method == "Frontal"
+    assert j5p.model_code == "SM-G570M"
+
+    ip14 = db.query(models.Device).filter_by(marca="Apple", modelo="iPhone 14").one()
+    assert ip14.opening_method == "Frontal / Traseira"
+
+    a14_4g = db.query(models.Device).filter_by(marca="Samsung", modelo="Galaxy A14 4G").one()
+    assert db.query(models.Compatibility).filter_by(device_id=a14_4g.id, part_id=p_a14_5g.id).first() is None
+
+    rf = db.query(models.Device).filter_by(marca="Refox").first()
+    assert rf is not None and rf.device_type == "Insumo / Máquina"
+
+    cleaned_art = db.query(models.WikiArticle).filter_by(ai_context_text="Dica teste").one()
+    assert cleaned_art.target_device == "iPhone (Geral)"
+    assert cleaned_art.category == "Procedimento"
+    assert cleaned_art.tags == "A, B"
+
+    jk50 = db.query(models.Part).filter_by(nome="Bateria JK50").one()
+    assert jk50.part_code == "JK50"
+    assert all(c.notas for c in db.query(models.Compatibility).filter_by(part_id=jk50.id).all())

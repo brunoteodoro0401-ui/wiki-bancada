@@ -291,3 +291,42 @@ def test_ai_settings_can_clear_saved_api_keys(client, db, admin_headers, monkeyp
     assert r_clr.json()["has_hf_key"] is False
     assert db.get(models.AppSetting, "gemini_api_key") is None
     assert db.get(models.AppSetting, "hf_api_key") is None
+
+
+def test_retrieve_matches_model_code_part_code_and_critical_flags(db):
+    dev = models.Device(
+        marca="Samsung",
+        modelo="Galaxy A54",
+        model_code="SM-A546E",
+        opening_method="Traseira",
+        opening_temp="80°C",
+        has_flex_cable=True,
+        technical_notes="Tampa traseira de vidro colada",
+    )
+    part = models.Part(nome="Placa Sub A54", categoria="Subplaca", part_code="SUB-A546E", quality_tier="Original")
+    art = models.WikiArticle(
+        target_device="Samsung Galaxy A54",
+        category="Alerta Químico",
+        severity="Crítico",
+        ai_context_text="Evite álcool próximo ao sensor óptico.",
+        tags="a54, sensor",
+    )
+    db.add_all([dev, part, art])
+    db.flush()
+    db.add(models.Compatibility(
+        device_id=dev.id,
+        part_id=part.id,
+        compatibility_type="Incompatível",
+        notas="Subplaca 4G não serve neste modelo 5G",
+    ))
+    db.commit()
+
+    rag.invalidate_docs_cache()
+    docs_dev = rag.retrieve(db, "como abrir SM-A546E")
+    assert any(d["type"] == "device" and "SM-A546E" in d["title"] for d in docs_dev)
+
+    docs_part = rag.retrieve(db, "compatibilidade SUB-A546E")
+    assert any(d["type"] == "compatibility" and "[INCOMPATÍVEL — ALERTA]" in d["text"] for d in docs_part)
+
+    docs_wiki = rag.retrieve(db, "alcool sensor Galaxy A54")
+    assert any(d["type"] == "wiki" and "[CRÍTICO]" in d["text"] for d in docs_wiki)

@@ -11,7 +11,7 @@ import secrets
 
 from email_validator import EmailNotValidError, validate_email
 
-from database import Base, SessionLocal, engine
+from database import Base, SessionLocal, engine, ensure_schema_columns
 from models import Compatibility, Device, Part, TrustedSource, User, WikiArticle
 from security import hash_password
 
@@ -168,9 +168,9 @@ EXTENDED_DEVICES = [
     ("Samsung", "Galaxy M12", "Traseira", True),
     ("Samsung", "Galaxy A13 4G", "Traseira", True),
     ("Samsung", "Galaxy M14 5G", "Traseira", True),
-    ("Samsung", "Galaxy A15", "Traseira", True),
+    ("Samsung", "Galaxy A15 4G", "Traseira", True),
     ("Samsung", "Galaxy A32 4G", "Traseira", True),
-    ("Samsung", "Galaxy M32", "Traseira", True),
+    ("Samsung", "Galaxy M32 4G", "Traseira", True),
     ("Samsung", "Galaxy A34", "Traseira", True),
     ("Samsung", "Galaxy A54", "Traseira", True),
     ("Samsung", "Galaxy S20 FE", "Traseira", True),
@@ -186,7 +186,7 @@ EXTENDED_DEVICES = [
     ("Motorola", "Moto G52", "Traseira", True),
     ("Motorola", "Moto G60", "Traseira", True),
     ("Motorola", "Moto G82", "Traseira", True),
-    ("Motorola", "Edge 30", "Traseira", True),
+    ("Motorola", "Moto Edge 30", "Traseira", True),
     ("Xiaomi", "Redmi 9A", "Traseira", True),
     ("Xiaomi", "Redmi 9C", "Traseira", True),
     ("Xiaomi", "Redmi 10A", "Traseira", True),
@@ -242,10 +242,10 @@ EXTENDED_COMPATS = [
     ("Galaxy A02s", "Tela PLS LCD Universal Galaxy A02s / A03 / A03s", "Mesma frontal sem aro entre A02s, A03 e A03s."),
     ("Galaxy A03", "Tela PLS LCD Universal Galaxy A02s / A03 / A03s", "Compatível sem aro com A02s e A03s."),
     ("Galaxy A03s", "Tela PLS LCD Universal Galaxy A02s / A03 / A03s", "Compatível sem aro; com aro o recorte da biometria no botão Power difere do A02s."),
-    ("Galaxy A14", "Tela PLS LCD Galaxy A14 5G (SM-A146) / Galaxy M14 5G", "Atenção: Galaxy A14 4G (A145) e A14 5G (A146) têm conectores FPC diferentes. A versão A14 5G (A146B) é compatível sem aro com o M14 5G."),
+    ("Galaxy A14 5G", "Tela PLS LCD Galaxy A14 5G (SM-A146) / Galaxy M14 5G", "Atenção: Galaxy A14 4G (A145) e A14 5G (A146) têm conectores FPC diferentes. A versão A14 5G (A146B) é compatível sem aro com o M14 5G."),
     ("Galaxy M14 5G", "Tela PLS LCD Galaxy A14 5G (SM-A146) / Galaxy M14 5G", "Compatível na versão sem aro com a tela do Galaxy A14 5G (modelo SM-A146B)."),
     ("Galaxy A32 4G", "Tela Super AMOLED Galaxy A32 4G / Galaxy M32 (Sem Aro)", "Display sem aro é compatível com o Galaxy M32 (no A32 mantém leitor óptico de digital)."),
-    ("Galaxy M32", "Tela Super AMOLED Galaxy A32 4G / Galaxy M32 (Sem Aro)", "Aceita a frontal sem aro do Galaxy A32 4G."),
+    ("Galaxy M32 4G", "Tela Super AMOLED Galaxy A32 4G / Galaxy M32 (Sem Aro)", "Aceita a frontal sem aro do Galaxy A32 4G."),
     ("Galaxy A12", "Bateria EB-BA217ABY (5000mAh) — Linha Samsung A02/A03s/A12/A13/A21s/M12", "Bateria original Samsung SCUD-WT-N6 / EB-BA217ABY 5000mAh compatível com toda a família."),
     ("Galaxy A13 4G", "Bateria EB-BA217ABY (5000mAh) — Linha Samsung A02/A03s/A12/A13/A21s/M12", "Mesmo conector FPC e dimensões da bateria do A12/A21s."),
     ("Galaxy A03s", "Bateria EB-BA217ABY (5000mAh) — Linha Samsung A02/A03s/A12/A13/A21s/M12", "Compatível direta (5000mAh)."),
@@ -369,17 +369,26 @@ def seed_compat_master_list(db):
 
 
 def seed_all_devices(db):
-    """Garante que todos os aparelhos consolidados existam no catálogo de aparelhos (1 query)."""
+    """Garante que todos os aparelhos consolidados existam e estejam enriquecidos (1 query)."""
     added = 0
     try:
+        from seed_compat_master import DEVICE_ALIASES, _apply_device_enrichment
         from seed_devices_extra import ALL_DEVICES
-        existing = {( (d.marca or "").lower(), (d.modelo or "").lower() ) for d in db.query(Device).all()}
+
+        existing = {((d.marca or "").lower(), (d.modelo or "").lower()): d for d in db.query(Device).all()}
         for marca, modelo, opening, flex in ALL_DEVICES:
-            key = (marca.lower(), modelo.lower())
+            canon_marca, canon_modelo = DEVICE_ALIASES.get(
+                (marca.lower(), modelo.lower()), (marca, modelo)
+            )
+            key = (canon_marca.lower(), canon_modelo.lower())
             if key not in existing:
-                db.add(Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex))
-                existing.add(key)
+                dev = Device(marca=canon_marca, modelo=canon_modelo, opening_method=opening, has_flex_cable=flex)
+                _apply_device_enrichment(dev)
+                db.add(dev)
+                existing[key] = dev
                 added += 1
+            else:
+                _apply_device_enrichment(existing[key])
         db.flush()
     except ImportError:
         pass
@@ -436,6 +445,7 @@ def seed_admin(db):
 
 def main():
     Base.metadata.create_all(bind=engine)
+    ensure_schema_columns(engine)
     db = SessionLocal()
     try:
         added = seed_articles(db)

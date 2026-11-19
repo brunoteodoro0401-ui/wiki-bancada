@@ -19,8 +19,12 @@ class Device(Base):
     id = Column(Integer, primary_key=True, index=True)
     marca = Column(String, index=True, nullable=False)
     modelo = Column(String, index=True, nullable=False)
+    model_code = Column(String, index=True)
+    device_type = Column(String, index=True, default="Smartphone")
     opening_method = Column(String)
+    opening_temp = Column(String)
     has_flex_cable = Column(Boolean, default=False)
+    technical_notes = Column(Text)
 
 
 class Part(Base):
@@ -29,6 +33,8 @@ class Part(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True, nullable=False)
     categoria = Column(String, index=True)
+    part_code = Column(String, index=True)
+    quality_tier = Column(String)
 
 
 class Compatibility(Base):
@@ -37,6 +43,7 @@ class Compatibility(Base):
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(Integer, ForeignKey("Devices.id"), index=True, nullable=False)
     part_id = Column(Integer, ForeignKey("Parts.id"), index=True, nullable=False)
+    compatibility_type = Column(String, default="Direta")
     notas = Column(Text)
 
 
@@ -46,6 +53,7 @@ class WikiArticle(Base):
     id = Column(Integer, primary_key=True, index=True)
     target_device = Column(String, index=True, nullable=False)
     category = Column(String, index=True)
+    severity = Column(String, default="Informativo")
     ai_context_text = Column(Text, nullable=False)
     tags = Column(String)
 

@@ -41,16 +41,32 @@ describe('ArticleCard', () => {
   it('só mostra Editar/Excluir quando os handlers existem (admin)', () => {
     const { rerender } = render(<ArticleCard article={article} />)
     expect(screen.queryByText('Editar')).toBeNull()
-    rerender(<ArticleCard article={article} onEdit={() => {}} onDelete={() => {}} />)
+    rerender(<ArticleCard article={{ ...article, severity: 'Crítico' }} onEdit={() => {}} onDelete={() => {}} />)
     expect(screen.getByText('Editar')).toBeTruthy()
     expect(screen.getByText('Excluir')).toBeTruthy()
+    expect(screen.getByText(/Crítico/)).toBeTruthy()
   })
 })
 
 describe('DeviceCard', () => {
   it('alerta de flex e método de abertura', () => {
-    render(<DeviceCard device={{ id: 1, marca: 'Apple', modelo: 'iPhone 11', opening_method: 'Frontal', has_flex_cable: true }} />)
+    render(
+      <DeviceCard
+        device={{
+          id: 1,
+          marca: 'Apple',
+          modelo: 'iPhone 11',
+          model_code: 'A2111 / A2221',
+          opening_method: 'Frontal',
+          opening_temp: '80°C (2 min)',
+          has_flex_cable: true,
+          technical_notes: 'Abra para a direita',
+        }}
+      />,
+    )
     expect(screen.getByText('Abertura Frontal')).toBeTruthy()
+    expect(screen.getByText('A2111 / A2221')).toBeTruthy()
+    expect(screen.getByText(/80°C/)).toBeTruthy()
     expect(screen.getByRole('note').textContent).toMatch(/cabo flex/i)
   })
 

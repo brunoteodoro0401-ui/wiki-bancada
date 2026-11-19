@@ -11,6 +11,13 @@ Formato de cada grupo:
     notas      -> nota geral do grupo (aplicada a todos os modelos sem nota própria)
 """
 from models import Compatibility, Device, Part, WikiArticle
+from seed_knowledge_pack import (
+    DEVICE_MODEL_CODES,
+    DEVICE_TECH_PROFILES,
+    EXTRA_COMPAT_GROUPS,
+    EXTRA_WIKI_ARTICLES,
+    PART_METADATA_ENRICHMENTS,
+)
 
 # --------------------------------------------------------------------------- SAMSUNG
 SAMSUNG = [
@@ -211,9 +218,9 @@ _IPHONE_11_TO_16 = [
     "iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max",
     "iPhone 12", "iPhone 12 Pro", "iPhone 12 Pro Max",
     "iPhone 13", "iPhone 13 Mini", "iPhone 13 Pro", "iPhone 13 Pro Max",
-    "iPhone 14", "iPhone 14 Pro", "iPhone 14 Pro Max",
+    "iPhone 14", "iPhone 14 Plus", "iPhone 14 Pro", "iPhone 14 Pro Max",
     "iPhone 15", "iPhone 15 Plus", "iPhone 15 Pro", "iPhone 15 Pro Max",
-    "iPhone 16", "iPhone 16 Pro Max",
+    "iPhone 16", "iPhone 16 Plus", "iPhone 16 Pro", "iPhone 16 Pro Max",
 ]
 
 APPLE = [
@@ -300,25 +307,30 @@ DELL = [
 ]
 
 LENOVO = [
-    {"categoria": "Informática", "nome": "Telas, Baterias, Palmrests e Dobradiças — Lenovo ThinkPad / V15 / IdeaPad",
-     "modelos": ["ThinkPad E14 (Gen 1 a Gen 6)", "ThinkPad T470", "ThinkPad T480", "Lenovo V15", "IdeaPad 320 / S145"],
+    {"categoria": "Informática", "part_code": "LEN-NB-PART", "quality_tier": "Reposição Notebook",
+     "nome": "Telas, Baterias, Palmrests e Dobradiças — Lenovo ThinkPad / V15 / IdeaPad",
+     "modelos": ["ThinkPad E14 (Gen 1 a Gen 6)", "ThinkPad T470", "ThinkPad T480", "V15", "IdeaPad 320 / S145"],
      "notas": "Estoque auxiliar de peças para notebooks Lenovo."},
 ]
 
 HP = [
-    {"categoria": "Informática", "nome": "Telas, Baterias, Palmrests e Dobradiças — HP ProBook / Linha 240 e 250",
-     "modelos": ["ProBook 440 G7 / G9", "HP 240 G7", "HP 250 G8 / G9"],
+    {"categoria": "Informática", "part_code": "HP-NB-PART", "quality_tier": "Reposição Notebook",
+     "nome": "Telas, Baterias, Palmrests e Dobradiças — HP ProBook / Linha 240 e 250",
+     "modelos": ["ProBook 440 G7 / G9", "240 G7", "250 G8 / G9"],
      "notas": "Estoque auxiliar de peças para notebooks HP."},
 ]
 
 REFOX = [
-    {"categoria": "Maquinário & Insumos", "nome": "Laser e Separação Refox — LM80E / RK10 (UV) / Separadoras RF20 e RF40",
+    {"categoria": "Maquinário & Insumos", "part_code": "REFOX-LASER", "quality_tier": "Equipamento Bancada",
+     "nome": "Laser e Separação Refox — LM80E / RK10 (UV) / Separadoras RF20 e RF40",
      "modelos": ["LM80E (Laser)", "RK10 (UV)", "Separadora RF20", "Separadora RF40"],
      "notas": "Equipamentos de bancada Refox para separação e remoção a laser."},
-    {"categoria": "Maquinário & Insumos", "nome": "Laminação e Tira-Bolhas Refox — FM45 / Estufas UV RM26 e RM22",
+    {"categoria": "Maquinário & Insumos", "part_code": "REFOX-LAM", "quality_tier": "Equipamento Bancada",
+     "nome": "Laminação e Tira-Bolhas Refox — FM45 / Estufas UV RM26 e RM22",
      "modelos": ["Laminadora FM45", "Estufa UV RM26", "Estufa UV RM22"],
      "notas": "Equipamentos Refox para recondicionamento de telas e cura UV."},
-    {"categoria": "Maquinário & Insumos", "nome": "Insumos e Ferramentas Refox — Cola SupBond RA21 / Fio de Aço / OCA 250um / DF40 / DF45 / Chaves RS2 e RS3",
+    {"categoria": "Maquinário & Insumos", "part_code": "REFOX-INS", "quality_tier": "Insumos & Ferramentas",
+     "nome": "Insumos e Ferramentas Refox — Cola SupBond RA21 / Fio de Aço / OCA 250um / DF40 / DF45 / Chaves RS2 e RS3",
      "modelos": ["Cola SupBond RA21", "Fio de Aço (0.028mm a 0.08mm)", "Cola OCA 250um", "Organizadores DF40 / DF45", "Chaves de Precisão RS2 / RS3"],
      "notas": "Insumos e ferramentas de precisão para bancada."},
 ]
@@ -334,6 +346,7 @@ MASTER_GROUPS = (
     + [dict(g, marca="Lenovo") for g in LENOVO]
     + [dict(g, marca="HP") for g in HP]
     + [dict(g, marca="Refox") for g in REFOX]
+    + EXTRA_COMPAT_GROUPS
 )
 
 # Peças que ganharam novos modelos e mudaram de nome: o registro antigo é renomeado
@@ -344,6 +357,7 @@ RENAMES = {
     "Tela Frontal Moto G13 / G23 — sem aro": "Tela Frontal Moto G13 / G23 / G34 / G45 / G53 — sem aro",
     "Tela Frontal Moto G04 / G04s / G24 — sem aro": "Tela Frontal Moto G04 / G04s / G24 / G24 Power — sem aro",
     "Placa Sub de Carga Poco X3 NFC / Poco X3 Pro": "Placa Sub de Carga Poco X3 / X3 NFC / X3 Pro",
+    "Subplaca Conector de Carga Moto E7 / Moto Moto G9 Play": "Subplaca Conector de Carga Moto E7 / Moto G9 Play",
 }
 
 # Alertas de bancada importantes da lista (também alimentam a IA).
@@ -391,6 +405,7 @@ MASTER_ARTICLES = [
     {"target_device": "Apple iPhone", "category": "Compatibilidade",
      "ai_context_text": "Vidros traseiros de iPhone são agrupados por modelo (Vidro Traseiro [Modelo]) com variações: com aro e ímã, furo maior OEM e cores. Carcaças são agrupadas como Carcaça Completa [Modelo] com variações: com flex, sem flex, gaveta SIM, e-SIM e cor. Confira a variação certa para o aparelho do cliente.",
      "tags": "iphone, vidro traseiro, carcaça, aro, ímã, furo maior, e-sim, gaveta sim"},
+    *EXTRA_WIKI_ARTICLES,
 ]
 
 
@@ -406,10 +421,23 @@ DEVICE_ALIASES = {
     ("motorola", "motorola edge 40 neo"): ("Motorola", "Moto Edge 40 Neo"),
     ("motorola", "motorola edge 50 fusion"): ("Motorola", "Moto Edge 50 Fusion"),
     ("motorola", "motorola edge 60 neo"): ("Motorola", "Moto Edge 60 Neo"),
+    ("motorola", "edge 30"): ("Motorola", "Moto Edge 30"),
     ("apple", "iphone se (2ª geração)"): ("Apple", "iPhone SE 2020"),
     ("apple", "iphone se (3ª geração)"): ("Apple", "iPhone SE 2022"),
     ("xiaomi", "14c"): ("Xiaomi", "Redmi 14C"),
+    ("xiaomi", "pocophone f1"): ("Xiaomi", "Poco F1"),
+    ("xiaomi", "redmi note 10"): ("Xiaomi", "Redmi Note 10 4G"),
+    ("xiaomi", "redmi note 12"): ("Xiaomi", "Redmi Note 12 4G"),
     ("samsung", "galaxy j7 pro"): ("Samsung", "Galaxy J7 Pro"),
+    ("samsung", "galaxy s20 fe snap"): ("Samsung", "Galaxy S20 FE"),
+    ("samsung", "galaxy a14"): ("Samsung", "Galaxy A14 4G"),
+    ("samsung", "galaxy a15"): ("Samsung", "Galaxy A15 4G"),
+    ("samsung", "galaxy a23"): ("Samsung", "Galaxy A23 4G"),
+    ("samsung", "galaxy a52"): ("Samsung", "Galaxy A52 4G"),
+    ("samsung", "galaxy m32"): ("Samsung", "Galaxy M32 4G"),
+    ("lenovo", "lenovo v15"): ("Lenovo", "V15"),
+    ("hp", "hp 240 g7"): ("HP", "240 G7"),
+    ("hp", "hp 250 g8 / g9"): ("HP", "250 G8 / G9"),
 }
 
 PART_MERGES = {
@@ -419,6 +447,8 @@ PART_MERGES = {
         'Tela OLED iPhone 12 / 12 Pro Universal (6.1")',
     "Tela Super AMOLED Redmi Note 10 4G / Note 11 4G / Poco M5s":
         "Tela Super AMOLED Redmi Note 10 4G / Note 10S / Note 11 4G / Note 11S / Poco M5s",
+    "Bateria Compatível iPhone 11":
+        "Bateria A2111 (iPhone 11) — 3110mAh",
 }
 
 ORPHAN_PART_REPAIRS = {
@@ -428,27 +458,99 @@ ORPHAN_PART_REPAIRS = {
 }
 
 
+def _infer_device_type(marca: str, modelo: str) -> str:
+    b = (marca or "").strip().lower()
+    m = (modelo or "").strip().lower()
+    if b == "refox":
+        return "Insumo / Máquina"
+    if b in {"dell", "lenovo", "hp"}:
+        return "Notebook"
+    if any(k in m for k in ("ipad", "tablet", "tab ")):
+        return "Tablet"
+    if any(k in m for k in ("playstation", "xbox", "nintendo switch")):
+        return "Console"
+    if "roteador" in m or b == "outros":
+        return "Outro"
+    return "Smartphone"
+
+
 def _default_device_attrs(marca: str, modelo: str) -> tuple[str | None, bool]:
     """Define método de abertura e alerta de flex padrão por marca/modelo."""
     brand_low = (marca or "").strip().lower()
     mod_low = (modelo or "").strip().lower()
+    profile = DEVICE_TECH_PROFILES.get((brand_low, mod_low))
+    if profile:
+        return profile["opening_method"], profile["has_flex_cable"]
     if brand_low in NON_MOBILE_BRANDS or "roteador" in mod_low:
         return None, False
     if brand_low == "apple":
         if "ipad" in mod_low:
             return "Frontal", True
-        # iPhone 14 (base), 14 Plus, e linha 15/16/17 abrem pela traseira (14 Pro/Max abrem pela frontal)
-        is_rear_iphone = (
+        is_modular_apple = (
             mod_low == "iphone 14"
             or "14 plus" in mod_low
             or any(v in mod_low for v in ("iphone 15", "iphone 16", "iphone 17"))
         )
-        return ("Traseira" if is_rear_iphone else "Frontal"), True
+        return ("Frontal / Traseira" if is_modular_apple else "Frontal"), True
     return "Traseira", True
+
+
+def _apply_device_enrichment(device: Device) -> None:
+    """Aplica device_type, model_code e perfil técnico (abertura/temperatura/flex/notas)."""
+    brand_low = (device.marca or "").strip().lower()
+    mod_low = (device.modelo or "").strip().lower()
+    dtype = _infer_device_type(device.marca, device.modelo)
+    device.device_type = dtype
+
+    if not device.model_code:
+        code = DEVICE_MODEL_CODES.get((brand_low, mod_low))
+        if code:
+            device.model_code = code
+
+    profile = DEVICE_TECH_PROFILES.get((brand_low, mod_low))
+    if profile:
+        device.opening_method = profile["opening_method"]
+        device.opening_temp = profile["opening_temp"]
+        device.has_flex_cable = profile["has_flex_cable"]
+        device.technical_notes = profile["technical_notes"]
+    else:
+        if dtype in ("Smartphone", "Tablet"):
+            if not device.opening_method:
+                opening, flex = _default_device_attrs(device.marca, device.modelo)
+                device.opening_method = opening
+                device.has_flex_cable = flex
+            if not device.opening_temp:
+                if brand_low in ("alcatel", "positivo", "multilaser") or not device.has_flex_cable:
+                    device.opening_temp = "Encaixe / Espátula"
+                elif device.opening_method == "Frontal":
+                    device.opening_temp = "75–80°C (bordas)"
+                else:
+                    device.opening_temp = "75–80°C (tampa)"
+        else:
+            device.opening_method = None
+            device.has_flex_cable = False
 
 
 def _merge_or_rename_devices(db) -> None:
     """Unifica aparelhos duplicados com grafias diferentes mantendo compatibilidades."""
+    # Corrige vínculo histórico do Galaxy A14 genérico com tela exclusiva de A14 5G antes da fusão com A14 4G
+    a14_generic = db.query(Device).filter_by(marca="Samsung", modelo="Galaxy A14").first()
+    a14_5g = db.query(Device).filter_by(marca="Samsung", modelo="Galaxy A14 5G").first()
+    part_a14_5g = db.query(Part).filter_by(nome="Tela PLS LCD Galaxy A14 5G (SM-A146) / Galaxy M14 5G").first()
+    if a14_generic and part_a14_5g:
+        old_link = db.query(Compatibility).filter_by(device_id=a14_generic.id, part_id=part_a14_5g.id).first()
+        if old_link:
+            if not a14_5g:
+                a14_5g = Device(marca="Samsung", modelo="Galaxy A14 5G", opening_method="Traseira", has_flex_cable=True)
+                db.add(a14_5g)
+                db.flush()
+            exists_5g = db.query(Compatibility).filter_by(device_id=a14_5g.id, part_id=part_a14_5g.id).first()
+            if not exists_5g:
+                old_link.device_id = a14_5g.id
+            else:
+                db.delete(old_link)
+            db.flush()
+
     all_devs = db.query(Device).order_by(Device.id).all()
     by_key = {( (d.marca or "").strip().lower(), (d.modelo or "").strip().lower() ): d for d in all_devs}
     compat_pairs = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
@@ -508,6 +610,15 @@ def _merge_duplicate_parts(db) -> None:
     db.flush()
 
 
+def _default_severity_for_category(cat: str | None) -> str:
+    c = (cat or "").strip().lower()
+    if "alerta" in c:
+        return "Crítico"
+    if "microsoldagem" in c:
+        return "Atenção"
+    return "Informativo"
+
+
 def seed_compat_master(db) -> dict:
     """Cria (sem duplicar) aparelhos, peças, vínculos e dicas da lista mestra."""
     new_devices = new_parts = new_links = new_articles = 0
@@ -529,15 +640,10 @@ def seed_compat_master(db) -> dict:
         ((d.marca or "").strip().lower(), (d.modelo or "").strip().lower()): d
         for d in db.query(Device).all()
     }
-    # Preenche método de abertura padrão para aparelhos que ficaram sem essa informação
     for d in existing_devices.values():
-        if d.opening_method is None and (d.marca or "").strip().lower() not in NON_MOBILE_BRANDS:
-            opening, flex = _default_device_attrs(d.marca, d.modelo)
-            if opening:
-                d.opening_method = opening
-                d.has_flex_cable = flex
+        _apply_device_enrichment(d)
 
-    existing_links = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
+    existing_links = {(c.device_id, c.part_id): c for c in db.query(Compatibility).all()}
 
     def _ensure_device(marca: str, modelo: str) -> Device:
         nonlocal new_devices
@@ -546,6 +652,7 @@ def seed_compat_master(db) -> dict:
         if not device:
             opening, flex = _default_device_attrs(marca, modelo)
             device = Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex)
+            _apply_device_enrichment(device)
             db.add(device)
             db.flush()
             existing_devices[key] = device
@@ -554,21 +661,75 @@ def seed_compat_master(db) -> dict:
 
     for group in MASTER_GROUPS:
         part = existing_parts.get(group["nome"])
+        enrich = PART_METADATA_ENRICHMENTS.get(group["nome"], {})
+        p_code = group.get("part_code") or enrich.get("part_code")
+        p_tier = group.get("quality_tier") or enrich.get("quality_tier")
         if not part:
-            part = Part(nome=group["nome"], categoria=group["categoria"])
+            part = Part(
+                nome=group["nome"],
+                categoria=group["categoria"],
+                part_code=p_code,
+                quality_tier=p_tier,
+            )
             db.add(part)
             db.flush()
             existing_parts[group["nome"]] = part
             new_parts += 1
+        else:
+            if p_code and not part.part_code:
+                part.part_code = p_code
+            if p_tier and not part.quality_tier:
+                part.quality_tier = p_tier
 
         for item in group["modelos"]:
-            modelo, nota = (item, None) if isinstance(item, str) else item
-            nota = nota or group.get("notas")
+            if isinstance(item, str):
+                modelo, nota, ctype = item, None, group.get("compatibility_type") or "Direta"
+            elif len(item) == 2:
+                modelo, nota = item
+                ctype = group.get("compatibility_type") or "Direta"
+            else:
+                modelo, nota, ctype = item[0], item[1], item[2]
+            nota = nota or group.get("notas") or enrich.get("default_note")
             device = _ensure_device(group["marca"], modelo)
-            if (device.id, part.id) not in existing_links:
-                db.add(Compatibility(device_id=device.id, part_id=part.id, notas=nota))
-                existing_links.add((device.id, part.id))
+            link_key = (device.id, part.id)
+            existing_link = existing_links.get(link_key)
+            if not existing_link:
+                c_obj = Compatibility(
+                    device_id=device.id,
+                    part_id=part.id,
+                    compatibility_type=ctype,
+                    notas=nota,
+                )
+                db.add(c_obj)
+                existing_links[link_key] = c_obj
                 new_links += 1
+            else:
+                if nota and not existing_link.notas:
+                    existing_link.notas = nota
+                if ctype and (not existing_link.compatibility_type or existing_link.compatibility_type == "Direta") and ctype != "Direta":
+                    existing_link.compatibility_type = ctype
+                elif not existing_link.compatibility_type:
+                    existing_link.compatibility_type = "Direta"
+
+    # Enriquecimento final de peças e compatibilidades pré-existentes (fora da lista mestra)
+    for p in existing_parts.values():
+        enrich = PART_METADATA_ENRICHMENTS.get(p.nome)
+        if enrich:
+            if enrich.get("part_code") and not p.part_code:
+                p.part_code = enrich["part_code"]
+            if enrich.get("quality_tier") and not p.quality_tier:
+                p.quality_tier = enrich["quality_tier"]
+
+    parts_by_id = {p.id: p for p in existing_parts.values()}
+    for c in existing_links.values():
+        if not c.compatibility_type:
+            c.compatibility_type = "Direta"
+        if not c.notas:
+            p_obj = parts_by_id.get(c.part_id)
+            if p_obj and p_obj.nome in PART_METADATA_ENRICHMENTS:
+                dn = PART_METADATA_ENRICHMENTS[p_obj.nome].get("default_note")
+                if dn:
+                    c.notas = dn
 
     # Vincula peças órfãs legadas caso já existam no banco (sem criar novas peças)
     for part_name, (marca, modelos, nota) in ORPHAN_PART_REPAIRS.items():
@@ -578,17 +739,39 @@ def seed_compat_master(db) -> dict:
         for modelo in modelos:
             dev = existing_devices.get((marca.lower(), modelo.lower()))
             if dev and (dev.id, part.id) not in existing_links:
-                db.add(Compatibility(device_id=dev.id, part_id=part.id, notas=nota))
-                existing_links.add((dev.id, part.id))
+                c_obj = Compatibility(device_id=dev.id, part_id=part.id, compatibility_type="Direta", notas=nota)
+                db.add(c_obj)
+                existing_links[(dev.id, part.id)] = c_obj
                 new_links += 1
 
-    existing_articles = {
-        (a.target_device, a.ai_context_text) for a in db.query(WikiArticle).all()
-    }
+    # Higieniza artigos existentes e adiciona os novos da base expandida
+    all_articles = db.query(WikiArticle).all()
+    for art in all_articles:
+        if art.target_device:
+            cleaned_target = art.target_device.strip()
+            if cleaned_target.lower() == "iphone em geral":
+                cleaned_target = "iPhone (Geral)"
+            art.target_device = cleaned_target
+        if art.category:
+            art.category = art.category.strip()
+        if art.tags:
+            art.tags = ", ".join(t.strip() for t in art.tags.split(",") if t.strip())
+        if not art.severity:
+            art.severity = _default_severity_for_category(art.category)
+
+    existing_articles = {(a.target_device, a.ai_context_text) for a in all_articles}
     for item in MASTER_ARTICLES:
         key = (item["target_device"], item["ai_context_text"])
         if key not in existing_articles:
-            db.add(WikiArticle(**item))
+            db.add(
+                WikiArticle(
+                    target_device=item["target_device"],
+                    category=item.get("category"),
+                    severity=item.get("severity") or _default_severity_for_category(item.get("category")),
+                    ai_context_text=item["ai_context_text"],
+                    tags=item.get("tags"),
+                )
+            )
             existing_articles.add(key)
             new_articles += 1
 

@@ -8,6 +8,8 @@ import EntityFormModal, { ghostBtn, inputClass, primaryBtn } from '../components
 const PART_FIELDS = [
   { name: 'nome', label: 'Nome da peça', required: true },
   { name: 'categoria', label: 'Categoria (ex: Display, Bateria, Flex)' },
+  { name: 'part_code', label: 'Código da peça / SKU (ex: EB-BA546ABY, JK50)' },
+  { name: 'quality_tier', label: 'Qualidade / Versão (ex: Original, AMOLED, Sem Aro)' },
 ]
 
 const QUICK_WEB_SEARCHES = [
@@ -452,7 +454,9 @@ export default function PartsView() {
     return devices.items.filter((d) => {
       if (brand && (d.marca || '').toLowerCase() !== brand.toLowerCase()) return false
       if (terms.length === 0) return true
-      const fullLabel = normalize(formatDeviceLabel(d.marca, d.modelo))
+      const fullLabel = normalize(
+        [formatDeviceLabel(d.marca, d.modelo), d.model_code].filter(Boolean).join(' '),
+      )
       return terms.every((t) => fullLabel.includes(t))
     })
   }, [devices.items, terms, brand, category])
@@ -469,18 +473,38 @@ export default function PartsView() {
       name: 'part_id', label: 'Peça', type: 'select', required: true,
       options: [{ value: '', label: 'Selecione...' }, ...parts.items.map((p) => ({ value: p.id, label: p.nome }))],
     },
+    {
+      name: 'compatibility_type',
+      label: 'Tipo de compatibilidade',
+      type: 'select',
+      options: [
+        { value: 'Direta', label: 'Direta (compatível)' },
+        { value: 'Com Adaptação', label: 'Com Adaptação' },
+        { value: 'Incompatível', label: '⛔ Incompatível (alerta)' },
+      ],
+    },
     { name: 'notas', label: 'Notas (ex: cuidados na instalação/ativação)', type: 'textarea' },
   ]
 
   async function savePart(values) {
-    const body = { ...values, categoria: values.categoria || null }
+    const body = {
+      ...values,
+      categoria: values.categoria || null,
+      part_code: values.part_code || null,
+      quality_tier: values.quality_tier || null,
+    }
     if (editingPart.id) await api.put(`/parts/${editingPart.id}`, body)
     else await api.post('/parts', body)
     await Promise.all([parts.reload(), compats.reload()])
   }
 
   async function saveCompat(values) {
-    const body = { device_id: Number(values.device_id), part_id: Number(values.part_id), notas: values.notas || null }
+    const body = {
+      device_id: Number(values.device_id),
+      part_id: Number(values.part_id),
+      compatibility_type: values.compatibility_type || 'Direta',
+      notas: values.notas || null,
+    }
     if (editingCompat.id) await api.put(`/compatibilities/${editingCompat.id}`, body)
     else await api.post('/compatibilities', body)
     await compats.reload()
@@ -534,7 +558,7 @@ export default function PartsView() {
               >
                 🌐 Buscar na Internet (IA)
               </button>
-              <button onClick={() => setEditingCompat({})} className={ghostBtn}>+ Compatibilidade</button>
+              <button onClick={() => setEditingCompat({ compatibility_type: 'Direta' })} className={ghostBtn}>+ Compatibilidade</button>
               <button onClick={() => setEditingPart({})} className={primaryBtn}>+ Nova peça</button>
             </div>
           )}
@@ -607,7 +631,23 @@ export default function PartsView() {
           return (
             <article key={g.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <h3 className="font-semibold leading-snug text-slate-900">{g.nome}</h3>
+                <div>
+                  <h3 className="font-semibold leading-snug text-slate-900">{g.nome}</h3>
+                  {(g.part_code || g.quality_tier) && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {g.part_code && (
+                        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-700">
+                          SKU: {g.part_code}
+                        </span>
+                      )}
+                      {g.quality_tier && (
+                        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                          {g.quality_tier}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="flex shrink-0 flex-wrap gap-1.5">
                   {g.categoria && (
                     <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{g.categoria}</span>
@@ -628,15 +668,24 @@ export default function PartsView() {
                   <ul className="flex flex-wrap gap-1.5">
                     {shown.map((l) => {
                       const hit = linkMatchesTerms(l, terms)
+                      const ctype = l.compatibility_type || 'Direta'
+                      const chipStyle =
+                        ctype === 'Incompatível'
+                          ? 'border-red-300 bg-red-50 font-semibold text-red-800'
+                          : ctype === 'Com Adaptação'
+                            ? 'border-amber-300 bg-amber-50 text-amber-900'
+                            : hit
+                              ? 'border-amber-300 bg-amber-50 font-semibold text-amber-900'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-900'
                       return (
                         <li
                           key={l.id}
                           title={l.notas || undefined}
-                          className={`rounded-lg border px-2.5 py-1 text-sm ${
-                            hit ? 'border-amber-300 bg-amber-50 font-semibold text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                          }`}
+                          className={`rounded-lg border px-2.5 py-1 text-sm ${chipStyle}`}
                         >
+                          {ctype === 'Incompatível' && '⛔ '}
                           {g.brands.length > 1 ? l.label : l.modelo}
+                          {ctype === 'Com Adaptação' && ' 🔧'}
                           {l.notas && !g.sharedNote && <span aria-hidden="true" className="ml-1 text-xs opacity-60">ⓘ</span>}
                         </li>
                       )
@@ -664,7 +713,7 @@ export default function PartsView() {
               {isAdmin && (
                 <div className="mt-auto pt-4">
                   <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
-                    <button onClick={() => setEditingCompat({ part_id: g.id })} className="text-blue-600 hover:underline">+ Vincular aparelho</button>
+                    <button onClick={() => setEditingCompat({ part_id: g.id, compatibility_type: 'Direta' })} className="text-blue-600 hover:underline">+ Vincular aparelho</button>
                     <button onClick={() => setManaging((s) => ({ ...s, [g.id]: !s[g.id] }))} className="text-slate-600 hover:underline">
                       {managing[g.id] ? 'Fechar vínculos' : 'Gerenciar vínculos'}
                     </button>
@@ -682,7 +731,7 @@ export default function PartsView() {
                         <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2">
                           <span className="text-slate-800">{l.label}</span>
                           <span className="flex gap-3">
-                            <button onClick={() => setEditingCompat({ id: l.id, device_id: l.device_id, part_id: g.id, notas: l.notas })} className="text-blue-600 hover:underline">Editar</button>
+                            <button onClick={() => setEditingCompat({ id: l.id, device_id: l.device_id, part_id: g.id, compatibility_type: l.compatibility_type || 'Direta', notas: l.notas })} className="text-blue-600 hover:underline">Editar</button>
                             <button onClick={() => remove(`/compatibilities/${l.id}`, `o vínculo com ${l.label}`, [compats.reload])} className="text-red-600 hover:underline">Excluir</button>
                           </span>
                         </li>
@@ -727,7 +776,14 @@ export default function PartsView() {
                   className="flex flex-col justify-between gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-slate-900">{formatDeviceLabel(d.marca, d.modelo)}</span>
+                    <div>
+                      <span className="font-semibold text-slate-900">{formatDeviceLabel(d.marca, d.modelo)}</span>
+                      {d.model_code && (
+                        <span className="ml-2 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-600 border border-slate-200">
+                          {d.model_code}
+                        </span>
+                      )}
+                    </div>
                     <span className="shrink-0 rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                       {partCount} peça(s)
                     </span>

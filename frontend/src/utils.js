@@ -92,6 +92,8 @@ export function buildPartGroups(parts, compats, devices) {
       label: d ? formatDeviceLabel(d.marca, d.modelo) : (c.device_label ?? ''),
       modelo: d?.modelo ?? c.device_label ?? '',
       marca: d?.marca ?? '',
+      device_code: d?.model_code ?? c.device_code ?? '',
+      compatibility_type: c.compatibility_type || 'Direta',
       notas: c.notas ?? '',
     }
     if (!linksByPart.has(c.part_id)) linksByPart.set(c.part_id, [])
@@ -136,7 +138,16 @@ export function searchPartGroups(groups, query, { brand = '', category = '' } = 
     if (category && g.categoria !== category) return false
     if (terms.length === 0) return true
     const haystack = normalize(
-      [g.nome, g.categoria, ...g.brands, ...g.links.map((l) => l.label), ...g.links.map((l) => l.notas)].join(' '),
+      [
+        g.nome,
+        g.part_code,
+        g.quality_tier,
+        g.categoria,
+        ...g.brands,
+        ...g.links.map((l) => l.label),
+        ...g.links.map((l) => l.device_code),
+        ...g.links.map((l) => l.notas),
+      ].join(' '),
     )
     return terms.every((t) => haystack.includes(t))
   })

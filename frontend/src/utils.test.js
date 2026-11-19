@@ -73,20 +73,20 @@ describe('osBackupAndPdf', () => {
 
 describe('compatibilidade de peças', () => {
   const devices = [
-    { id: 1, marca: 'Samsung', modelo: 'Galaxy A12' },
-    { id: 2, marca: 'Samsung', modelo: 'Galaxy M12' },
-    { id: 3, marca: 'Motorola', modelo: 'Moto G20' },
+    { id: 1, marca: 'Samsung', modelo: 'Galaxy A12', model_code: 'SM-A125M' },
+    { id: 2, marca: 'Samsung', modelo: 'Galaxy M12', model_code: 'SM-M127F' },
+    { id: 3, marca: 'Motorola', modelo: 'Moto G20', model_code: 'XT2128' },
   ]
   const parts = [
-    { id: 10, nome: 'Bateria EB-BA217ABY / WT-S-N28', categoria: 'Bateria' },
+    { id: 10, nome: 'Bateria EB-BA217ABY / WT-S-N28', categoria: 'Bateria', part_code: 'SKU-N28', quality_tier: 'Original' },
     { id: 11, nome: 'Tela Frontal Galaxy A12 — sem aro', categoria: 'Display' },
     { id: 12, nome: 'Bateria JK50', categoria: 'Bateria' },
     { id: 13, nome: 'Peça sem vínculo', categoria: 'Flex' },
   ]
   const compats = [
-    { id: 1, device_id: 1, part_id: 10, notas: 'Mesma célula', device_label: 'Samsung Galaxy A12' },
-    { id: 2, device_id: 2, part_id: 10, notas: 'Mesma célula', device_label: 'Samsung Galaxy M12' },
-    { id: 3, device_id: 1, part_id: 11, notas: 'Encaixa também no A02', device_label: 'Samsung Galaxy A12' },
+    { id: 1, device_id: 1, part_id: 10, compatibility_type: 'Direta', notas: 'Mesma célula', device_label: 'Samsung Galaxy A12' },
+    { id: 2, device_id: 2, part_id: 10, compatibility_type: 'Com Adaptação', notas: 'Mesma célula', device_label: 'Samsung Galaxy M12' },
+    { id: 3, device_id: 1, part_id: 11, compatibility_type: 'Direta', notas: 'Encaixa também no A02', device_label: 'Samsung Galaxy A12' },
     { id: 4, device_id: 3, part_id: 12, notas: null, device_label: 'Motorola Moto G20' },
   ]
   const groups = buildPartGroups(parts, compats, devices)
@@ -100,9 +100,12 @@ describe('compatibilidade de peças', () => {
     expect(groups.find((g) => g.id === 13).links).toEqual([])
   })
 
-  it('busca pelo nome/código da peça e mostra os modelos compatíveis', () => {
+  it('busca pelo nome/código da peça e código de fábrica do aparelho', () => {
     const r = searchPartGroups(groups, 'eb-ba217aby')
     expect(r.map((g) => g.id)).toEqual([10])
+    expect(searchPartGroups(groups, 'sku-n28').map((g) => g.id)).toEqual([10])
+    expect(searchPartGroups(groups, 'xt2128').map((g) => g.id)).toEqual([12])
+    expect(groups.find((g) => g.id === 10).links[1].compatibility_type).toBe('Com Adaptação')
     expect(searchPartGroups(groups, 'bateria').map((g) => g.id).sort()).toEqual([10, 12])
   })
 

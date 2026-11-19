@@ -4,7 +4,10 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from security import MAX_PASSWORD_BYTES
 
-OpeningMethod = Literal["Frontal", "Traseira"]
+OpeningMethod = Literal["Frontal", "Traseira", "Frontal / Traseira"]
+DeviceType = Literal["Smartphone", "Tablet", "Notebook", "Console", "Insumo / Máquina", "Outro"]
+CompatibilityType = Literal["Direta", "Com Adaptação", "Incompatível"]
+SeverityLevel = Literal["Crítico", "Atenção", "Informativo"]
 Role = Literal["admin", "tecnico", "bloqueado"]
 IngestType = Literal["url", "youtube", "search", "text"]
 AIProvider = Literal["gemini", "huggingface", "auto"]
@@ -59,8 +62,12 @@ class UserSettingsIn(BaseModel):
 class DeviceBase(BaseModel):
     marca: str = Field(min_length=1)
     modelo: str = Field(min_length=1)
+    model_code: Optional[str] = None
+    device_type: Optional[DeviceType] = "Smartphone"
     opening_method: Optional[OpeningMethod] = None
+    opening_temp: Optional[str] = None
     has_flex_cable: bool = False
+    technical_notes: Optional[str] = None
 
 
 class DeviceOut(DeviceBase):
@@ -72,6 +79,8 @@ class DeviceOut(DeviceBase):
 class PartBase(BaseModel):
     nome: str = Field(min_length=1)
     categoria: Optional[str] = None
+    part_code: Optional[str] = None
+    quality_tier: Optional[str] = None
 
 
 class PartOut(PartBase):
@@ -83,6 +92,7 @@ class PartOut(PartBase):
 class CompatBase(BaseModel):
     device_id: int
     part_id: int
+    compatibility_type: Optional[CompatibilityType] = "Direta"
     notas: Optional[str] = None
 
 
@@ -90,15 +100,33 @@ class CompatOut(CompatBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     device_label: Optional[str] = None
+    device_code: Optional[str] = None
     part_nome: Optional[str] = None
+    part_code: Optional[str] = None
 
 
 # ---------- Wiki ----------
 class WikiBase(BaseModel):
     target_device: str = Field(min_length=1)
     category: Optional[str] = None
+    severity: Optional[SeverityLevel] = "Informativo"
     ai_context_text: str = Field(min_length=1)
     tags: Optional[str] = None
+
+    @field_validator("target_device", "category", "tags", mode="before")
+    @classmethod
+    def strip_text_fields(cls, v):
+        if isinstance(v, str):
+            stripped = v.strip()
+            return stripped or None
+        return v
+
+    @field_validator("target_device")
+    @classmethod
+    def target_not_empty(cls, v: str) -> str:
+        if not v:
+            raise ValueError("target_device obrigatório")
+        return v
 
 
 class WikiOut(WikiBase):

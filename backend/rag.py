@@ -322,8 +322,10 @@ def build_documents(db: Session) -> List[Dict]:
 
     docs: List[Dict] = []
     for a in db.query(models.WikiArticle).all():
-        text = a.ai_context_text
-        extra = a.tags or ""
+        sev = (a.severity or "").strip()
+        sev_prefix = f"[{sev.upper()}] " if sev in ("Crítico", "Atenção") else ""
+        text = f"{sev_prefix}{a.ai_context_text}"
+        extra = f"{a.tags or ''} {sev}"
         docs.append({
             "type": "wiki", "id": a.id,
             "title": f"{a.target_device} — {a.category or 'Dica'}",
@@ -335,13 +337,16 @@ def build_documents(db: Session) -> List[Dict]:
         })
     for d in db.query(models.Device).all():
         abertura = d.opening_method or "não informada"
+        temp = f" (Temp.: {d.opening_temp})" if d.opening_temp else ""
         flex = "possui cabo flex sensível na abertura" if d.has_flex_cable else "sem alerta de flex"
-        head = f"{d.marca} {d.modelo}"
-        text = f"Abertura {abertura}; {flex}."
-        extra = "abertura abrir desmontar"
+        tech_note = f" Obs.: {d.technical_notes}" if d.technical_notes else ""
+        code_lbl = f" [{d.model_code}]" if d.model_code else ""
+        head = f"{d.marca} {d.modelo} {d.model_code or ''}".strip()
+        text = f"Abertura {abertura}{temp}; {flex}.{tech_note}"
+        extra = f"abertura abrir desmontar {d.device_type or ''} {d.model_code or ''}"
         docs.append({
             "type": "device", "id": d.id,
-            "title": head,
+            "title": f"{d.marca} {d.modelo}{code_lbl}",
             "head": head,
             "text": text,
             "extra": extra,
@@ -355,9 +360,16 @@ def build_documents(db: Session) -> List[Dict]:
         .all()
     )
     for c, d, p in rows:
-        head = f"{d.marca} {d.modelo} {p.nome}"
-        text = c.notas or f"{p.nome} é compatível com {d.marca} {d.modelo}."
-        extra = p.categoria or ""
+        ctype = (c.compatibility_type or "Direta").strip()
+        prefix = ""
+        if ctype == "Incompatível":
+            prefix = "[INCOMPATÍVEL — ALERTA] "
+        elif ctype == "Com Adaptação":
+            prefix = "[COM ADAPTAÇÃO] "
+        head = f"{d.marca} {d.modelo} {d.model_code or ''} {p.nome} {p.part_code or ''}".strip()
+        base_note = c.notas or f"{p.nome} é compatível com {d.marca} {d.modelo}."
+        text = f"{prefix}{base_note}"
+        extra = f"{p.categoria or ''} {p.part_code or ''} {p.quality_tier or ''} {ctype}"
         docs.append({
             "type": "compatibility", "id": c.id,
             "title": f"Compatibilidade: {p.nome} × {d.marca} {d.modelo}",

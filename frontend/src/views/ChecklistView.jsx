@@ -927,9 +927,11 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
               className={inputClass}
             />
             <datalist id="chk-device-list">
-              {devices.map((d) => (
-                <option key={d.id} value={`${d.marca} ${d.modelo}`} />
-              ))}
+              {devices
+                .filter((d) => d.device_type !== 'Insumo / Máquina')
+                .map((d) => (
+                  <option key={d.id} value={`${d.marca} ${d.modelo}`} />
+                ))}
             </datalist>
           </div>
 
@@ -1032,11 +1034,20 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
 
         {matchedDevice && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <strong>⚠️ Alerta de Bancada ({matchedDevice.marca} {matchedDevice.modelo}):</strong>{' '}
-              Abertura <strong>{matchedDevice.opening_method || 'não informada'}</strong>.{' '}
-              {matchedDevice.has_flex_cable &&
-                'Possui cabo flex sensível na abertura — desconecte com cuidado antes de separar.'}
+            <div className="space-y-0.5">
+              <div>
+                <strong>
+                  ⚠️ Alerta de Bancada ({matchedDevice.marca} {matchedDevice.modelo}
+                  {matchedDevice.model_code ? ` • ${matchedDevice.model_code}` : ''}):
+                </strong>{' '}
+                Abertura <strong>{matchedDevice.opening_method || 'não informada'}</strong>
+                {matchedDevice.opening_temp ? ` (${matchedDevice.opening_temp})` : ''}.{' '}
+                {matchedDevice.has_flex_cable &&
+                  'Possui cabo flex sensível na abertura — desconecte com cuidado antes de separar.'}
+              </div>
+              {matchedDevice.technical_notes && (
+                <div className="text-[11px] text-amber-800">{matchedDevice.technical_notes}</div>
+              )}
             </div>
           </div>
         )}

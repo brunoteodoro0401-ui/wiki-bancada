@@ -160,3 +160,73 @@ def test_service_orders_avoids_duplicate_os_number_collision(client, tech_header
     assert r1.status_code == 201 and r2.status_code == 201
     assert r1.json()["os_number"] == "OS-0050"
     assert r2.json()["os_number"] == "OS-0051"
+
+
+def test_enriched_fields_on_device_part_compat_and_wiki(client, admin_headers):
+    r_dev = client.post(
+        "/devices",
+        json={
+            "marca": "Samsung",
+            "modelo": "Galaxy A14 4G",
+            "model_code": "SM-A145M",
+            "device_type": "Smartphone",
+            "opening_method": "Frontal / Traseira",
+            "opening_temp": "80°C (3 min)",
+            "has_flex_cable": True,
+            "technical_notes": "Cuidado no flex lateral",
+        },
+        headers=admin_headers,
+    )
+    assert r_dev.status_code == 201
+    dev = r_dev.json()
+    assert dev["model_code"] == "SM-A145M"
+    assert dev["opening_temp"] == "80°C (3 min)"
+
+    r_part = client.post(
+        "/parts",
+        json={
+            "nome": "Bateria EB-BA546ABY",
+            "categoria": "Bateria",
+            "part_code": "EB-BA546ABY",
+            "quality_tier": "Original / 5000mAh",
+        },
+        headers=admin_headers,
+    )
+    assert r_part.status_code == 201
+    part = r_part.json()
+    assert part["part_code"] == "EB-BA546ABY"
+
+    r_comp = client.post(
+        "/compatibilities",
+        json={
+            "device_id": dev["id"],
+            "part_id": part["id"],
+            "compatibility_type": "Incompatível",
+            "notas": "Não serve na versão 5G",
+        },
+        headers=admin_headers,
+    )
+    assert r_comp.status_code == 201
+    comp = r_comp.json()
+    assert comp["compatibility_type"] == "Incompatível"
+    assert comp["device_code"] == "SM-A145M"
+    assert comp["part_code"] == "EB-BA546ABY"
+
+    all_compats = client.get("/compatibilities").json()
+    assert all_compats[0]["device_code"] == "SM-A145M"
+
+    r_wiki = client.post(
+        "/wiki_articles",
+        json={
+            "target_device": "Samsung SM-A145M ",
+            "category": "Procedimento ",
+            "severity": "Crítico",
+            "ai_context_text": "Nunca force a tampa traseira.",
+            "tags": "a14, seguranca",
+        },
+        headers=admin_headers,
+    )
+    assert r_wiki.status_code == 201
+    assert r_wiki.json()["category"] == "Procedimento"
+    assert r_wiki.json()["target_device"] == "Samsung SM-A145M"
+    assert r_wiki.json()["severity"] == "Crítico"

@@ -10,6 +10,16 @@ import ImportModal from '../components/ImportModal'
 const FIELDS = [
   { name: 'target_device', label: 'Aparelho (ex: iPhone 11, Samsung Geral)', required: true },
   { name: 'category', label: 'Categoria (ex: Procedimento, Alerta Químico)' },
+  {
+    name: 'severity',
+    label: 'Nível de criticidade',
+    type: 'select',
+    options: [
+      { value: 'Informativo', label: 'Informativo' },
+      { value: 'Atenção', label: '⚠️ Atenção' },
+      { value: 'Crítico', label: '🚨 Crítico (risco de dano)' },
+    ],
+  },
   { name: 'ai_context_text', label: 'Dica técnica', type: 'textarea', required: true },
   { name: 'tags', label: 'Tags (separadas por vírgula)' },
 ]
@@ -24,21 +34,32 @@ const CATEGORIES = [
   'Resolução de Problemas',
 ]
 
-const clean = (v) => ({ ...v, category: v.category || null, tags: v.tags || null })
+const clean = (v) => ({
+  ...v,
+  category: v.category || null,
+  severity: v.severity || 'Informativo',
+  tags: v.tags || null,
+})
 
 export default function WikiView({ search }) {
   const { isAdmin } = useAuth()
   const { items, loading, error, reload } = useResource('/wiki_articles')
   const [selectedCategory, setSelectedCategory] = useState('Todas')
+  const [selectedSeverity, setSelectedSeverity] = useState('Todas')
   const [editing, setEditing] = useState(null) // null | {} (novo) | artigo
   const [showImporter, setShowImporter] = useState(false)
   const [actionError, setActionError] = useState(null)
 
-  const bySearch = filterBySearch(items, search, ['target_device', 'category', 'ai_context_text', 'tags'])
-  const filtered =
-    selectedCategory === 'Todas'
-      ? bySearch
-      : bySearch.filter((a) => (a.category || '').toLowerCase() === selectedCategory.toLowerCase())
+  const bySearch = filterBySearch(items, search, ['target_device', 'category', 'severity', 'ai_context_text', 'tags'])
+  const filtered = bySearch.filter((a) => {
+    if (selectedCategory !== 'Todas' && (a.category || '').trim().toLowerCase() !== selectedCategory.toLowerCase()) {
+      return false
+    }
+    if (selectedSeverity !== 'Todas' && (a.severity || 'Informativo') !== selectedSeverity) {
+      return false
+    }
+    return true
+  })
 
   async function save(values) {
     if (editing.id) await api.put(`/wiki_articles/${editing.id}`, clean(values))
@@ -71,27 +92,49 @@ export default function WikiView({ search }) {
             <button onClick={() => setShowImporter(true)} className={ghostBtn}>
               🌐 Importar da Web / YouTube / Grupos
             </button>
-            <button onClick={() => setEditing({})} className={primaryBtn}>
+            <button onClick={() => setEditing({ severity: 'Informativo' })} className={primaryBtn}>
               + Nova dica
             </button>
           </div>
         )}
       </div>
-      <div className="mb-4 flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por categoria">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setSelectedCategory(cat)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              selectedCategory === cat
-                ? 'bg-slate-900 text-white'
-                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por categoria">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                selectedCategory === cat
+                  ? 'bg-slate-900 text-white'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por criticidade">
+          {[
+            { id: 'Todas', label: 'Todos níveis' },
+            { id: 'Crítico', label: '🚨 Críticos' },
+            { id: 'Atenção', label: '⚠️ Atenção' },
+          ].map((sv) => (
+            <button
+              key={sv.id}
+              type="button"
+              onClick={() => setSelectedSeverity(selectedSeverity === sv.id ? 'Todas' : sv.id)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                selectedSeverity === sv.id
+                  ? 'bg-red-700 text-white'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {sv.label}
+            </button>
+          ))}
+        </div>
       </div>
       {loading && <p className="text-slate-500">Carregando...</p>}
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}

@@ -9,13 +9,12 @@ from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import models
 import rag
 import schemas
-from database import Base, SessionLocal, engine, get_db
+from database import Base, SessionLocal, engine, ensure_schema_columns, get_db
 from security import (
     create_access_token,
     get_current_user,
@@ -28,15 +27,8 @@ from security import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_schema_columns(engine)
     if "PYTEST_CURRENT_TEST" not in os.environ:
-        with engine.begin() as conn:
-            for ddl in (
-                'CREATE INDEX IF NOT EXISTS ix_compat_device_id ON "Compatibilities" (device_id)',
-                'CREATE INDEX IF NOT EXISTS ix_compat_part_id ON "Compatibilities" (part_id)',
-                'CREATE INDEX IF NOT EXISTS ix_devices_marca ON "Devices" (marca)',
-                'CREATE INDEX IF NOT EXISTS ix_parts_categoria ON "Parts" (categoria)',
-            ):
-                conn.execute(text(ddl))
         import seed
         db = SessionLocal()
         try:
@@ -287,9 +279,12 @@ def _compat_out(c: models.Compatibility, db: Session) -> dict:
         "id": c.id,
         "device_id": c.device_id,
         "part_id": c.part_id,
+        "compatibility_type": c.compatibility_type or "Direta",
         "notas": c.notas,
         "device_label": f"{d.marca} {d.modelo}" if d else None,
+        "device_code": d.model_code if d else None,
         "part_nome": p.nome if p else None,
+        "part_code": p.part_code if p else None,
     }
 
 
@@ -339,9 +334,12 @@ def list_compat(
             "id": c.id,
             "device_id": c.device_id,
             "part_id": c.part_id,
+            "compatibility_type": c.compatibility_type or "Direta",
             "notas": c.notas,
             "device_label": f"{d.marca} {d.modelo}" if d else None,
+            "device_code": d.model_code if d else None,
             "part_nome": p.nome if p else None,
+            "part_code": p.part_code if p else None,
         }
         for c, d, p in rows
     ]
