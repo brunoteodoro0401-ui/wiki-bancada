@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { useResource } from '../hooks'
-import { filterBySearch, normalize } from '../utils'
+import { filterBySearch, formatDeviceLabel, matchesDeviceTarget, normalize } from '../utils'
 import EntityFormModal, { ghostBtn, primaryBtn } from '../components/EntityFormModal'
 import Modal from '../components/Modal'
 
@@ -28,12 +28,16 @@ const FIELDS = [
 
 export function DeviceCard({ device, onSelect, onEdit, onDelete }) {
   const isFrontal = (device.opening_method || '').toLowerCase().includes('frontal')
+  const displayModel =
+    device.marca && normalize(device.modelo).startsWith(normalize(device.marca) + ' ')
+      ? device.modelo.slice(device.marca.length).trim()
+      : device.modelo
 
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div>
         <p className="text-xs uppercase tracking-wide text-slate-400">{device.marca}</p>
-        <h3 className="text-lg font-semibold text-slate-900">{device.modelo}</h3>
+        <h3 className="text-lg font-semibold text-slate-900">{displayModel}</h3>
       </div>
       <div className="flex flex-wrap gap-2">
         {device.opening_method ? (
@@ -86,21 +90,38 @@ function DeviceDetailModal({ device, onClose, onAskDevice }) {
   useEffect(() => {
     let active = true
     Promise.all([
-      api.get(`/compatibilities?device_id=${device.id}`).catch(() => ({ data: [] })),
+      api.get('/compatibilities').catch(() => ({ data: [] })),
       api.get('/wiki_articles').catch(() => ({ data: [] })),
     ]).then(([cRes, aRes]) => {
       if (!active) return
-      setCompats(cRes.data || [])
-      const modelNorm = normalize(device.modelo)
-      const brandNorm = normalize(device.marca)
-      const matched = (aRes.data || []).filter((a) => {
-        const target = normalize(a.target_device)
-        return (
-          target.includes(modelNorm) ||
-          (brandNorm && target.includes(brandNorm) && target.includes('geral'))
-        )
-      })
-      setArticles(matched)
+      const fullLabelNorm = normalize(formatDeviceLabel(device.marca, device.modelo))
+      const matchedCompats = []
+      const seenPartIds = new Set()
+      // Prioriza vínculos exatos por device_id e aceita equivalência direta de variante 4G sem sufixo
+      const allCompats = cRes.data || []
+      for (const c of allCompats) {
+        if (c.device_id === device.id) {
+          matchedCompats.push(c)
+          seenPartIds.add(c.part_id)
+        }
+      }
+      for (const c of allCompats) {
+        if (seenPartIds.has(c.part_id)) continue
+        const cLabel = normalize(c.device_label)
+        if (
+          cLabel === fullLabelNorm ||
+          (cLabel === `${fullLabelNorm} 4g` && !fullLabelNorm.includes('5g')) ||
+          (`${cLabel} 4g` === fullLabelNorm)
+        ) {
+          matchedCompats.push(c)
+          seenPartIds.add(c.part_id)
+        }
+      }
+      setCompats(matchedCompats)
+      const matchedArticles = (aRes.data || []).filter((a) =>
+        matchesDeviceTarget(a.target_device, device.marca, device.modelo),
+      )
+      setArticles(matchedArticles)
       setLoading(false)
     })
     return () => {
@@ -108,7 +129,7 @@ function DeviceDetailModal({ device, onClose, onAskDevice }) {
     }
   }, [device])
 
-  const label = `${device.marca} ${device.modelo}`
+  const label = formatDeviceLabel(device.marca, device.modelo)
 
   return (
     <Modal title={`📱 Ficha 360º — ${label}`} onClose={onClose}>
@@ -193,6 +214,8 @@ function DeviceDetailModal({ device, onClose, onAskDevice }) {
   )
 }
 
+const PAGE_SIZE = 48
+
 export default function DevicesView({ search: externalSearch, onAskDevice }) {
   const { isAdmin } = useAuth()
   const { items, loading, error, reload } = useResource('/devices')
@@ -201,6 +224,7 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
   const [actionError, setActionError] = useState(null)
   const [selectedBrand, setSelectedBrand] = useState('')
   const [query, setQuery] = useState('')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // Lista única de marcas disponíveis ordenada
   const brands = useMemo(() => {
@@ -218,11 +242,13 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
     return list
   }, [items, activeSearch, selectedBrand])
 
+  const visibleItems = activeSearch ? filtered : filtered.slice(0, visibleCount)
   const hasFilters = Boolean(activeSearch || selectedBrand)
 
   function clearFilters() {
     setQuery('')
     setSelectedBrand('')
+    setVisibleCount(PAGE_SIZE)
   }
 
   async function save(values) {
@@ -263,7 +289,10 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
           id="devices-search"
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setVisibleCount(PAGE_SIZE)
+          }}
           placeholder="Buscar aparelho por modelo, linha ou marca… ex.: Galaxy A54, Moto G34, iPhone 14, Poco X3"
           className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-4 text-base shadow-2xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
         />
@@ -275,7 +304,10 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Marca</span>
           <button
             type="button"
-            onClick={() => setSelectedBrand('')}
+            onClick={() => {
+              setSelectedBrand('')
+              setVisibleCount(PAGE_SIZE)
+            }}
             className={`${chipBase} ${selectedBrand === '' ? chipOn : chipOff}`}
           >
             Todas ({items.length})
@@ -286,7 +318,10 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
               <button
                 key={b}
                 type="button"
-                onClick={() => setSelectedBrand(selectedBrand === b ? '' : b)}
+                onClick={() => {
+                  setSelectedBrand(selectedBrand === b ? '' : b)
+                  setVisibleCount(PAGE_SIZE)
+                }}
                 className={`${chipBase} ${selectedBrand === b ? chipOn : chipOff}`}
               >
                 {b} ({count})
@@ -317,7 +352,7 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
         </p>
       )}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((d) => (
+        {visibleItems.map((d) => (
           <DeviceCard
             key={d.id}
             device={d}
@@ -327,6 +362,17 @@ export default function DevicesView({ search: externalSearch, onAskDevice }) {
           />
         ))}
       </div>
+      {!activeSearch && filtered.length > visibleCount && (
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            className={ghostBtn}
+          >
+            Mostrar mais aparelhos ({filtered.length - visibleCount} restantes)
+          </button>
+        </div>
+      )}
       {selectedDevice && (
         <DeviceDetailModal
           device={selectedDevice}

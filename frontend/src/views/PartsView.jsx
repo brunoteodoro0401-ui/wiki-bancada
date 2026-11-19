@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../auth'
 import { useResource } from '../hooks'
-import { buildPartGroups, linkMatchesTerms, searchPartGroups, searchTerms } from '../utils'
+import { buildPartGroups, formatDeviceLabel, linkMatchesTerms, normalize, searchPartGroups, searchTerms } from '../utils'
 import EntityFormModal, { ghostBtn, inputClass, primaryBtn } from '../components/EntityFormModal'
 
 const PART_FIELDS = [
@@ -418,7 +418,13 @@ export default function PartsView() {
     () => buildPartGroups(parts.items, compats.items, devices.items),
     [parts.items, compats.items, devices.items],
   )
-  const brandOptions = useMemo(() => [...new Set(groups.flatMap((g) => g.brands))].sort(), [groups])
+  const brandOptions = useMemo(
+    () =>
+      [...new Set([...groups.flatMap((g) => g.brands), ...devices.items.map((d) => d.marca).filter(Boolean)])].sort(
+        (a, b) => a.localeCompare(b, 'pt-BR'),
+      ),
+    [groups, devices.items],
+  )
   const categoryOptions = useMemo(
     () => [...new Set(groups.map((g) => g.categoria).filter(Boolean))].sort(),
     [groups],
@@ -428,13 +434,30 @@ export default function PartsView() {
     () => searchPartGroups(groups, query, { brand, category }),
     [groups, query, brand, category],
   )
+  const compatCountByDevice = useMemo(() => {
+    const map = new Map()
+    for (const c of compats.items) {
+      map.set(c.device_id, (map.get(c.device_id) || 0) + 1)
+    }
+    return map
+  }, [compats.items])
+  const matchedDevices = useMemo(() => {
+    if ((!terms.length && !brand) || category) return []
+    return devices.items.filter((d) => {
+      if (brand && (d.marca || '').toLowerCase() !== brand.toLowerCase()) return false
+      if (terms.length === 0) return true
+      const fullLabel = normalize(formatDeviceLabel(d.marca, d.modelo))
+      return terms.every((t) => fullLabel.includes(t))
+    })
+  }, [devices.items, terms, brand, category])
+  const [showAllMatchedDevices, setShowAllMatchedDevices] = useState(false)
   const loading = parts.loading || compats.loading || devices.loading
   const hasFilters = Boolean(query || brand || category)
 
   const compatFields = [
     {
       name: 'device_id', label: 'Aparelho', type: 'select', required: true,
-      options: [{ value: '', label: 'Selecione...' }, ...devices.items.map((d) => ({ value: d.id, label: `${d.marca} ${d.modelo}` }))],
+      options: [{ value: '', label: 'Selecione...' }, ...devices.items.map((d) => ({ value: d.id, label: formatDeviceLabel(d.marca, d.modelo) }))],
     },
     {
       name: 'part_id', label: 'Peça', type: 'select', required: true,
@@ -476,6 +499,7 @@ export default function PartsView() {
     setQuery('')
     setBrand('')
     setCategory('')
+    setShowAllMatchedDevices(false)
   }
 
   const chipBase = 'rounded-full border px-3 py-1 text-xs font-medium transition'
@@ -559,7 +583,7 @@ export default function PartsView() {
       {(parts.error || compats.error || devices.error) && (
         <p className="rounded-lg bg-red-50 p-4 text-red-700">{parts.error || compats.error || devices.error}</p>
       )}
-      {!loading && results.length === 0 && (
+      {!loading && results.length === 0 && matchedDevices.length === 0 && (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
           Nenhuma peça encontrada{query ? ` para "${query}"` : ''}. Tente outro nome, código ou modelo.
         </p>
@@ -567,7 +591,7 @@ export default function PartsView() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {results.map((g) => {
-          const LIMIT = 12
+          const LIMIT = 24
           const isOpen = expanded[g.id] || terms.length > 0
           const shown = isOpen ? g.links : g.links.slice(0, LIMIT)
           const hidden = g.links.length - shown.length
@@ -664,6 +688,70 @@ export default function PartsView() {
           )
         })}
       </div>
+
+      {!loading && matchedDevices.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">
+                Aparelhos no catálogo ({matchedDevices.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Aparelhos cadastrados correspondentes à sua busca/marca e método de abertura na bancada.
+              </p>
+            </div>
+            {matchedDevices.length > 24 && (
+              <button
+                type="button"
+                onClick={() => setShowAllMatchedDevices((v) => !v)}
+                className="text-xs font-medium text-blue-600 hover:underline"
+              >
+                {showAllMatchedDevices ? 'Mostrar menos' : `Ver todos (${matchedDevices.length})`}
+              </button>
+            )}
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {(showAllMatchedDevices ? matchedDevices : matchedDevices.slice(0, 24)).map((d) => {
+              const partCount = compatCountByDevice.get(d.id) || 0
+              return (
+                <div
+                  key={d.id}
+                  className="flex flex-col justify-between gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-slate-900">{formatDeviceLabel(d.marca, d.modelo)}</span>
+                    <span className="shrink-0 rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                      {partCount} peça(s)
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-xs">
+                    {d.opening_method ? (
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-medium ${
+                          d.opening_method.toLowerCase().includes('frontal')
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        Abertura {d.opening_method}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-200/60 px-2 py-0.5 text-slate-500">
+                        Equipamento / Não informado
+                      </span>
+                    )}
+                    {d.has_flex_cable && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">
+                        ⚠️ Flex
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {editingPart && (
         <EntityFormModal title={editingPart.id ? 'Editar peça' : 'Nova peça'} fields={PART_FIELDS} initial={editingPart} onSubmit={savePart} onClose={() => setEditingPart(null)} />

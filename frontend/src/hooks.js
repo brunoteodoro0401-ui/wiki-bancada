@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import api, { errorMessage } from './api'
 
-/** Carrega uma lista da API e expõe reload(). */
+const IS_TEST = import.meta.env?.MODE === 'test'
+
+function getWithRetry(path, attemptsLeft) {
+  return api.get(path).catch((err) => {
+    const status = err?.response?.status
+    const retryable = !err?.response || status >= 500
+    if (!retryable || attemptsLeft <= 1) throw err
+    return new Promise((resolve) => setTimeout(resolve, 1500)).then(() =>
+      getWithRetry(path, attemptsLeft - 1),
+    )
+  })
+}
+
+/** Carrega uma lista da API com retry automático (útil quando o servidor está acordando) e expõe reload(). */
 export function useResource(path) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -9,8 +22,7 @@ export function useResource(path) {
 
   const fetchItems = useCallback(
     () =>
-      api
-        .get(path)
+      getWithRetry(path, IS_TEST ? 1 : 3)
         .then((res) => {
           setItems(res.data)
           setError(null)

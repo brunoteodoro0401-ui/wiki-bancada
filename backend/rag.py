@@ -665,7 +665,7 @@ def fetch_youtube_content(url: str) -> Tuple[str, List[Dict[str, str]]]:
                     tracks = json.loads(cap_match.group(1))
                     if tracks and isinstance(tracks, list):
                         base_url = tracks[0].get("baseUrl")
-                        if base_url:
+                        if base_url and is_safe_public_url(base_url):
                             cap_resp = httpx.get(base_url, headers={"User-Agent": USER_AGENT}, timeout=6)
                             if cap_resp.status_code == 200:
                                 transcript = _clean_html_text(cap_resp.text)
@@ -1112,7 +1112,13 @@ def save_extracted_compatibilities(db: Session, items: List[Dict]) -> int:
             .first()
         )
         if not device:
-            opening = "Frontal" if marca.lower() == "apple" and "15" not in modelo else "Traseira"
+            mod_low = modelo.lower()
+            is_rear_apple = (
+                mod_low == "iphone 14"
+                or "14 plus" in mod_low
+                or any(v in mod_low for v in ("iphone 15", "iphone 16", "iphone 17", "15", "16", "17"))
+            )
+            opening = ("Traseira" if is_rear_apple else "Frontal") if marca.lower() == "apple" else "Traseira"
             device = models.Device(
                 marca=marca,
                 modelo=modelo,

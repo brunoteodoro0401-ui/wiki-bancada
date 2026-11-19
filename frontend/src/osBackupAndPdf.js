@@ -65,7 +65,7 @@ function wrapText(text, maxChars = 82) {
 /**
  * Gera um arquivo PDF 1.4 válido (Uint8Array) contendo o Laudo Técnico / Ordem de Serviço de Bancada.
  */
-export function generateOsPdfBytes(order, checklistItems, statusLabels) {
+export function generateOsPdfBytes(order, checklistItems, _statusLabels) {
   const osNum = order.osNumber || order.os_number || 'OS-S/N'
   const statusRaw = order.status || 'aberta'
   const statusText =
@@ -82,6 +82,10 @@ export function generateOsPdfBytes(order, checklistItems, statusLabels) {
   const benchCurrent = order.benchCurrent || order.bench_current || 'Não informado'
   const batteryHealth = order.batteryHealth || order.battery_health || 'Não informada'
   const serviceValue = order.serviceValue || order.service_value || 'A combinar'
+  const formattedBudget =
+    serviceValue === 'A combinar' || String(serviceValue).trim().toUpperCase().startsWith('R$')
+      ? serviceValue
+      : `R$ ${serviceValue}`
   const createdAt = order.createdAt || order.created_at || new Date().toLocaleString('pt-BR')
   const closedAt = order.closedAt || order.closed_at || ''
   const notes = order.notes || ''
@@ -111,7 +115,7 @@ export function generateOsPdfBytes(order, checklistItems, statusLabels) {
     [`Cliente: ${clientName}`, `Telefone/WhatsApp: ${clientPhone}`],
     [`Aparelho / Modelo: ${deviceModel}`, `IMEI / Serie: ${imei}`],
     [`Consumo na Fonte: ${benchCurrent}`, `Saude da Bateria: ${batteryHealth}`],
-    [`Abertura: ${createdAt}`, closedAt ? `Encerramento: ${closedAt}` : `Valor / Orcamento: R$ ${serviceValue}`],
+    [`Abertura: ${createdAt}`, closedAt ? `Encerramento: ${closedAt}` : `Valor / Orcamento: ${formattedBudget}`],
   ]
 
   let y = 740
@@ -154,7 +158,7 @@ export function generateOsPdfBytes(order, checklistItems, statusLabels) {
     else if (stKey === 'ok') ops.push('0.05 0.48 0.25 rg')
     else ops.push('0.45 0.35 0.05 rg')
 
-    ops.push(`BT /F2 9 Tf 375 ${y} Td ${toPdfWinAnsiLiteral(statusLabels?.[stKey] ? stLabel : stLabel)} Tj ET`)
+    ops.push(`BT /F2 9 Tf 375 ${y} Td ${toPdfWinAnsiLiteral(stLabel)} Tj ET`)
     y -= 17
   }
 

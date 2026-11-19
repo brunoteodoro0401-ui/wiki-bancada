@@ -122,6 +122,27 @@ function persistLocalOrders(list) {
   }
 }
 
+function toApiOrderPayload(o) {
+  return {
+    os_number: o.osNumber,
+    status: o.status,
+    stage: o.stage,
+    client_name: o.clientName || null,
+    client_phone: o.clientPhone || null,
+    device_model: o.deviceModel,
+    imei: o.imei || null,
+    bench_current: o.benchCurrent || null,
+    battery_health: o.batteryHealth || null,
+    service_value: o.serviceValue || null,
+    notes: o.notes || null,
+    closure_notes: o.closureNotes || null,
+    statuses: o.statuses || {},
+    created_at: o.createdAt,
+    updated_at: o.updatedAt,
+    closed_at: o.closedAt,
+  }
+}
+
 export default function ChecklistView({ onAskAI, loggedIn = false }) {
   const { items: devices } = useResource('/devices')
 
@@ -176,26 +197,55 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
     api
       .get('/service_orders')
       .then((res) => {
-        if (!active || !Array.isArray(res.data) || res.data.length === 0) return
-        setSavedHistory((localList) => {
-          const mapByOs = new Map()
-          for (const item of localList) {
-            mapByOs.set(`${item.osNumber}::${item.deviceModel}`, item)
-          }
-          for (const srv of res.data) {
-            const norm = normalizeOrder({ ...srv, serverId: srv.id })
-            const key = `${norm.osNumber}::${norm.deviceModel}`
-            if (!mapByOs.has(key)) {
-              mapByOs.set(key, norm)
-            } else {
-              const existing = mapByOs.get(key)
-              mapByOs.set(key, { ...existing, serverId: srv.id })
+        if (!active || !Array.isArray(res.data)) return
+        const serverList = res.data
+        const serverKeys = new Set(serverList.map((s) => `${s.os_number}::${s.device_model}`))
+        const unsynced = loadSavedChecklists().filter(
+          (item) => !item.serverId && !serverKeys.has(`${item.osNumber}::${item.deviceModel}`),
+        )
+
+        if (serverList.length > 0) {
+          setSavedHistory((localList) => {
+            const mapByOs = new Map()
+            for (const item of localList) {
+              mapByOs.set(`${item.osNumber}::${item.deviceModel}`, item)
             }
-          }
-          const merged = Array.from(mapByOs.values())
-          persistLocalOrders(merged)
-          return merged
-        })
+            for (const srv of serverList) {
+              const norm = normalizeOrder({ ...srv, serverId: srv.id })
+              const key = `${norm.osNumber}::${norm.deviceModel}`
+              if (!mapByOs.has(key)) {
+                mapByOs.set(key, norm)
+              } else {
+                const existing = mapByOs.get(key)
+                mapByOs.set(key, { ...existing, serverId: srv.id })
+              }
+            }
+            const merged = Array.from(mapByOs.values())
+            persistLocalOrders(merged)
+            return merged
+          })
+        }
+
+        if (unsynced.length > 0) {
+          api
+            .post('/service_orders/restore', { orders: unsynced.map(toApiOrderPayload) })
+            .then(() => api.get('/service_orders'))
+            .then((reloadRes) => {
+              if (!active || !Array.isArray(reloadRes.data)) return
+              const srvByKey = new Map(
+                reloadRes.data.map((srv) => [`${srv.os_number}::${srv.device_model}`, srv]),
+              )
+              setSavedHistory((prev) => {
+                const updated = prev.map((it) => {
+                  const srv = srvByKey.get(`${it.osNumber}::${it.deviceModel}`)
+                  return srv ? { ...it, serverId: srv.id } : it
+                })
+                persistLocalOrders(updated)
+                return updated
+              })
+            })
+            .catch(() => {})
+        }
       })
       .catch(() => {})
 
@@ -340,9 +390,9 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
       await pdfWritable.write(pdfBytes)
       await pdfWritable.close()
 
-      // 4) Pacote .RAR de backup atualizado na pasta
+      // 4) Pacote JSON de backup atualizado na pasta
       const rarBytes = createRarBackupBytes(allOrdersList)
-      const rarHandle = await dirHandle.getFileHandle('Backup_Automatico_OS_Bancada.rar', {
+      const rarHandle = await dirHandle.getFileHandle('Backup_Automatico_OS_Bancada.json', {
         create: true,
       })
       const rarWritable = await rarHandle.createWritable()
@@ -372,24 +422,7 @@ export default function ChecklistView({ onAskAI, loggedIn = false }) {
     persistLocalOrders(nextList)
 
     // Salva também no Servidor / Banco em Nuvem (se disponível)
-    const apiPayload = {
-      os_number: orderObj.osNumber,
-      status: orderObj.status,
-      stage: orderObj.stage,
-      client_name: orderObj.clientName || null,
-      client_phone: orderObj.clientPhone || null,
-      device_model: orderObj.deviceModel,
-      imei: orderObj.imei || null,
-      bench_current: orderObj.benchCurrent || null,
-      battery_health: orderObj.batteryHealth || null,
-      service_value: orderObj.serviceValue || null,
-      notes: orderObj.notes || null,
-      closure_notes: orderObj.closureNotes || null,
-      statuses: orderObj.statuses,
-      created_at: orderObj.createdAt,
-      updated_at: orderObj.updatedAt,
-      closed_at: orderObj.closedAt,
-    }
+    const apiPayload = toApiOrderPayload(orderObj)
     try {
       if (orderObj.serverId) {
         await api.put(`/service_orders/${orderObj.serverId}`, apiPayload)

@@ -195,6 +195,10 @@ EXTENDED_DEVICES = [
     ("Xiaomi", "Poco M3", "Traseira", True),
     ("Xiaomi", "Redmi 9T", "Traseira", True),
     ("Xiaomi", "Poco X3 Pro", "Traseira", True),
+    ("Xiaomi", "Poco X3", "Traseira", True),
+    ("Xiaomi", "Poco X3 NFC", "Traseira", True),
+    ("Xiaomi", "Poco M2 Pro", "Traseira", True),
+    ("Xiaomi", "Poco C3", "Traseira", True),
     ("Xiaomi", "Redmi Note 10 4G", "Traseira", True),
     ("Xiaomi", "Redmi Note 10S", "Traseira", True),
     ("Xiaomi", "Redmi Note 11", "Traseira", True),
@@ -273,6 +277,15 @@ EXTENDED_COMPATS = [
     ("Moto G8 Power Lite", "Bateria JK50 (5000mAh) — Moto G7 Power / G8 Power Lite / G9 Play / G20", "Utiliza a bateria JK50 (5000mAh)."),
     ("Moto G9 Play", "Bateria JK50 (5000mAh) — Moto G7 Power / G8 Power Lite / G9 Play / G20", "Utiliza a bateria JK50 (5000mAh)."),
     ("Moto G20", "Bateria JK50 (5000mAh) — Moto G7 Power / G8 Power Lite / G9 Play / G20", "Compatível com bateria JK50."),
+    ("iPhone 11", "Bateria A2111 (iPhone 11) — 3110mAh", "Bateria 3110mAh (A2111) exclusiva do iPhone 11."),
+    ("iPhone 11", "Flex de proximidade iPhone 11", "Sensor de proximidade / auricular pareado com Face ID."),
+    ("Poco X3", "Bateria BN57 (5160mAh) — Poco X3 / Poco X3 NFC / Poco X3 Pro", "Bateria modelo BN57 5160mAh compatível com toda a família Poco X3."),
+    ("Poco X3 NFC", "Bateria BN57 (5160mAh) — Poco X3 / Poco X3 NFC / Poco X3 Pro", "Mesma bateria BN57 5160mAh."),
+    ("Redmi Note 10S", "Bateria BN59 (5000mAh) — Redmi Note 10 4G / Note 10S / Poco M5s", "Mesma bateria BN59 5000mAh."),
+    ("Poco M5s", "Bateria BN59 (5000mAh) — Redmi Note 10 4G / Note 10S / Poco M5s", "Mesma bateria BN59 5000mAh."),
+    ("Moto E32", "Flex Botão Power / Biometria Moto G22 / G32 / E32", "Compatível com Moto G22, G32 e E32; confira a posição do pino guia."),
+    ("Poco M2 Pro", "Tela IPS LCD Redmi Note 9S / Redmi Note 9 Pro / Poco M2 Pro", "Mesma frontal sem aro do Redmi Note 9S e 9 Pro."),
+    ("Poco C3", "Tela IPS LCD Redmi 9A / Redmi 9C / Redmi 10A / Poco C3", "Mesma frontal do Redmi 9A, 9C e 10A."),
 ]
 
 DEFAULT_TRUSTED_SOURCES = [
@@ -315,27 +328,37 @@ def seed_catalog(db):
 
 def seed_extended_knowledge(db):
     """Popula dicas avançadas reais de reparo (iPhone, Samsung, Motorola, Xiaomi) e catálogo expandido."""
+    existing_articles = {(a.target_device, a.ai_context_text) for a in db.query(WikiArticle).all()}
     for item in EXTENDED_ARTICLES:
-        exists = db.query(WikiArticle).filter_by(
-            target_device=item["target_device"], ai_context_text=item["ai_context_text"]
-        ).first()
-        if not exists:
+        key = (item["target_device"], item["ai_context_text"])
+        if key not in existing_articles:
             db.add(WikiArticle(**item))
+            existing_articles.add(key)
 
+    existing_devices = {(d.marca, d.modelo): d for d in db.query(Device).all()}
+    by_modelo = {d.modelo: d for d in existing_devices.values()}
     for marca, modelo, opening, flex in EXTENDED_DEVICES:
-        if not db.query(Device).filter_by(marca=marca, modelo=modelo).first():
-            db.add(Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex))
+        if (marca, modelo) not in existing_devices:
+            dev = Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex)
+            db.add(dev)
+            existing_devices[(marca, modelo)] = dev
+            by_modelo.setdefault(modelo, dev)
 
+    existing_parts = {p.nome: p for p in db.query(Part).all()}
     for nome, categoria in EXTENDED_PARTS:
-        if not db.query(Part).filter_by(nome=nome).first():
-            db.add(Part(nome=nome, categoria=categoria))
+        if nome not in existing_parts:
+            p = Part(nome=nome, categoria=categoria)
+            db.add(p)
+            existing_parts[nome] = p
 
     db.flush()
+    existing_compats = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
     for modelo, part_nome, notas in EXTENDED_COMPATS:
-        device = db.query(Device).filter_by(modelo=modelo).first()
-        part = db.query(Part).filter_by(nome=part_nome).first()
-        if device and part and not db.query(Compatibility).filter_by(device_id=device.id, part_id=part.id).first():
+        device = by_modelo.get(modelo)
+        part = existing_parts.get(part_nome)
+        if device and part and (device.id, part.id) not in existing_compats:
             db.add(Compatibility(device_id=device.id, part_id=part.id, notas=notas))
+            existing_compats.add((device.id, part.id))
 
 
 def seed_compat_master_list(db):
@@ -346,13 +369,16 @@ def seed_compat_master_list(db):
 
 
 def seed_all_devices(db):
-    """Garante que todos os 375 aparelhos consolidados existam no catálogo de aparelhos."""
+    """Garante que todos os aparelhos consolidados existam no catálogo de aparelhos (1 query)."""
     added = 0
     try:
         from seed_devices_extra import ALL_DEVICES
+        existing = {( (d.marca or "").lower(), (d.modelo or "").lower() ) for d in db.query(Device).all()}
         for marca, modelo, opening, flex in ALL_DEVICES:
-            if not db.query(Device).filter_by(marca=marca, modelo=modelo).first():
+            key = (marca.lower(), modelo.lower())
+            if key not in existing:
                 db.add(Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex))
+                existing.add(key)
                 added += 1
         db.flush()
     except ImportError:
@@ -362,9 +388,11 @@ def seed_all_devices(db):
 
 def seed_trusted_sources(db):
     """Popula as fontes confiáveis padrão para a busca da IA na internet."""
+    existing = {s.url_or_domain for s in db.query(TrustedSource).all()}
     for nome, domain, categoria in DEFAULT_TRUSTED_SOURCES:
-        if not db.query(TrustedSource).filter_by(url_or_domain=domain).first():
+        if domain not in existing:
             db.add(TrustedSource(nome=nome, url_or_domain=domain, categoria=categoria, ativo=True))
+            existing.add(domain)
 
 
 OWNER_EMAIL = "brunoteodoro0401@gmail.com"
@@ -410,6 +438,7 @@ def main():
         seed_catalog(db)
         seed_extended_knowledge(db)
         added_master = seed_compat_master_list(db)
+        seed_all_devices(db)
         seed_trusted_sources(db)
         ensure_owner_admin(db)
         seed_admin(db)

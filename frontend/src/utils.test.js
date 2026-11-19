@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartGroups, filterBySearch, linkMatchesTerms, normalize, parseTags, searchPartGroups, searchTerms } from './utils'
+import { buildPartGroups, filterBySearch, formatDeviceLabel, linkMatchesTerms, matchesDeviceTarget, normalize, parseTags, searchPartGroups, searchTerms } from './utils'
 import { createRarBackupBytes, generateOsPdfBytes, parseBackupFile } from './osBackupAndPdf'
 
 describe('parseTags', () => {
@@ -123,5 +123,19 @@ describe('compatibilidade de peças', () => {
     const bateria = groups.find((g) => g.id === 10)
     expect(bateria.links.map((l) => linkMatchesTerms(l, terms))).toEqual([false, true])
     expect(linkMatchesTerms(bateria.links[0], [])).toBe(false)
+  })
+})
+
+
+describe('formatDeviceLabel e matchesDeviceTarget', () => {
+  it('evita repetir a marca quando o modelo já inicia com ela', () => {
+    expect(formatDeviceLabel('Motorola', 'Motorola Edge 40')).toBe('Motorola Edge 40')
+    expect(formatDeviceLabel('Motorola', 'Moto G20')).toBe('Motorola Moto G20')
+  })
+
+  it('evita falsos positivos entre iPhone 12 e iPhone 12 Pro na Ficha 360', () => {
+    expect(matchesDeviceTarget('iPhone 12 / 12 Pro', 'Apple', 'iPhone 12')).toBe(true)
+    expect(matchesDeviceTarget('iPhone 12 Pro / 12 Pro Max', 'Apple', 'iPhone 12')).toBe(false)
+    expect(matchesDeviceTarget('Samsung (Geral)', 'Samsung', 'Galaxy A54')).toBe(true)
   })
 })

@@ -83,25 +83,25 @@ MOTOROLA = [
     # Baterias
     {"categoria": "Bateria", "nome": "Bateria JK50",
      "modelos": ["Moto G7 Power", "Moto G8 Power Lite", "Moto G9 Play", "Moto G10", "Moto G20", "Moto G30",
-                 "Moto G31", "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Motorola One Fusion"],
+                 "Moto G31", "Moto G32", "Moto E7 Plus", "Moto E7 Power", "Moto E40", "Moto One Fusion"],
      "notas": "Lista informada como 6000mAh — confira a capacidade impressa na etiqueta da bateria original."},
     {"categoria": "Bateria", "nome": "Bateria NH50",
      "modelos": ["Moto G22", "Moto G13", "Moto G53", "Moto E13", "Moto E32", "Moto E32s"]},
     {"categoria": "Bateria", "nome": "Bateria MC50 (6000mAh)",
      "modelos": ["Moto G60", "Moto G9 Power", "Moto G40 Fusion"]},
     {"categoria": "Bateria", "nome": "Bateria KS40",
-     "modelos": ["Motorola One Vision", "Motorola One Action"]},
+     "modelos": ["Moto One Vision", "Moto One Action"]},
     {"categoria": "Bateria", "nome": "Bateria HG40",
      "modelos": ["Moto G5s", "Moto G5s Plus", "Moto G6"]},
     {"categoria": "Bateria", "nome": "Bateria JG40",
-     "modelos": ["Moto G7 Play", "Motorola One"]},
+     "modelos": ["Moto G7 Play", "Moto One"]},
     # Telas frontais e carcaças (sem aro)
     {"categoria": "Display", "nome": "Tela Frontal OLED Moto G31 / G41 / G71 — sem aro",
      "modelos": ["Moto G31", "Moto G41", "Moto G71"], "notas": "Frontais idênticas."},
     {"categoria": "Display", "nome": "Tela Frontal LCD 120Hz Moto G60 / G60s — sem aro",
      "modelos": ["Moto G60", "Moto G60s"], "notas": "Frontais idênticas — testar a taxa de atualização."},
     {"categoria": "Display", "nome": "Tela e Chassi Moto G8 Play / One Macro",
-     "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Telas e chassis idênticos."},
+     "modelos": ["Moto G8 Play", "Moto One Macro"], "notas": "Telas e chassis idênticos."},
     {"categoria": "Display", "nome": "Tela Frontal LCD Moto G9 Play / E7 Plus — sem aro",
      "modelos": ["Moto G9 Play", "Moto E7 Plus"], "notas": "Mesmo painel LCD."},
     {"categoria": "Display", "nome": "Tela Frontal Moto E6s / E6i — sem aro",
@@ -120,7 +120,7 @@ MOTOROLA = [
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G10 / G20",
      "modelos": ["Moto G10", "Moto G20"], "notas": "Mesma placa sub de carga."},
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G8 Play / One Macro",
-     "modelos": ["Moto G8 Play", "Motorola One Macro"], "notas": "Mesma placa sub de carga."},
+     "modelos": ["Moto G8 Play", "Moto One Macro"], "notas": "Mesma placa sub de carga."},
     {"categoria": "Biometria", "nome": "Leitor Biométrico Traseiro Moto G7 Play / G7 Power",
      "modelos": ["Moto G7 Play", "Moto G7 Power"]},
     # --- Inventário consolidado (nov/2026)
@@ -128,11 +128,11 @@ MOTOROLA = [
      "modelos": ["Moto G32", "Moto G52", "Moto G62", "Moto G72", "Moto G82", "Moto G73"],
      "notas": "Agrupamento de compatibilidade física — diferencie a versão LCD ou OLED conforme o aparelho do cliente."},
     {"categoria": "Display", "nome": "Tela Frontal P-OLED Motorola Edge 40 / Edge 40 Neo",
-     "modelos": ["Motorola Edge 40", "Motorola Edge 40 Neo"], "notas": "Painel P-OLED unificado."},
+     "modelos": ["Moto Edge 40", "Moto Edge 40 Neo"], "notas": "Painel P-OLED unificado."},
     {"categoria": "Bateria", "nome": "Bateria QB50", "modelos": ["Moto G84"]},
-    {"categoria": "Bateria", "nome": "Bateria QM50", "modelos": ["Motorola Edge 40 Neo"]},
-    {"categoria": "Bateria", "nome": "Bateria QC50", "modelos": ["Motorola Edge 50 Fusion"]},
-    {"categoria": "Bateria", "nome": "Bateria SP50", "modelos": ["Motorola Edge 60 Neo"]},
+    {"categoria": "Bateria", "nome": "Bateria QM50", "modelos": ["Moto Edge 40 Neo"]},
+    {"categoria": "Bateria", "nome": "Bateria QC50", "modelos": ["Moto Edge 50 Fusion"]},
+    {"categoria": "Bateria", "nome": "Bateria SP50", "modelos": ["Moto Edge 60 Neo"]},
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto E20 / E40",
      "modelos": ["Moto E20", "Moto E40"], "notas": "Placa sub unificada."},
     {"categoria": "Subplaca", "nome": "Placa Sub de Carga Moto G04 / G04s",
@@ -207,12 +207,63 @@ XIAOMI = [
 ]
 
 # --------------------------------------------------------------------------- APPLE
+_IPHONE_11_TO_16 = [
+    "iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max",
+    "iPhone 12", "iPhone 12 Pro", "iPhone 12 Pro Max",
+    "iPhone 13", "iPhone 13 Mini", "iPhone 13 Pro", "iPhone 13 Pro Max",
+    "iPhone 14", "iPhone 14 Pro", "iPhone 14 Pro Max",
+    "iPhone 15", "iPhone 15 Plus", "iPhone 15 Pro", "iPhone 15 Pro Max",
+    "iPhone 16", "iPhone 16 Pro Max",
+]
+
 APPLE = [
     {"categoria": "Carcaça", "nome": "Carcaça / Chassi iPhone 8 / SE 2020",
      "modelos": ["iPhone 8", "iPhone SE 2020"], "notas": "Carcaças compatíveis (muda apenas a estética da maçã)."},
     {"categoria": "Bateria", "nome": "Bateria A2479 iPhone 12 / 12 Pro",
      "modelos": ["iPhone 12", "iPhone 12 Pro"],
      "notas": "Mesma célula. Transplante do flex BMS necessário para evitar a mensagem de peça desconhecida."},
+    {"categoria": "Display", "nome": "Tela Frontal Retina HD iPhone 8 / SE (2ª e 3ª Geração)",
+     "modelos": ["iPhone 8", "iPhone SE 2020", "iPhone SE 2022"],
+     "notas": "Frontal unificada (3D Touch opera como Haptic no SE)."},
+    {"categoria": "Display", "nome": "Tela Frontal OLED iPhone 12 / 12 Pro (6.1\")",
+     "modelos": ["iPhone 12", "iPhone 12 Pro"],
+     "notas": "Painel OLED unificado (Exige regravação de True Tone)."},
+    {"categoria": "Display", "nome": "Display iPhone 11 ao 16 Pro Max (Hard OLED / Soft OLED / Incell / Repart)",
+     "modelos": _IPHONE_11_TO_16,
+     "notas": "Categorizados individualmente por tecnologia (Hard OLED, Soft OLED, Incell, Basic, Repart). Sem compatibilidade cruzada além do 12/12 Pro."},
+    {"categoria": "Bateria", "nome": "Baterias Exclusivas iPhone 6 ao 16 Pro Max e iPads (Com Flex / Decode Sem Flex)",
+     "modelos": [
+         "iPhone 6", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus",
+         "iPhone 8", "iPhone 8 Plus", "iPhone SE (1ª geração)", "iPhone SE 2020", "iPhone SE 2022",
+         "iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max",
+         *_IPHONE_11_TO_16,
+         "iPad 6ª geração", "iPad Air", "iPad Air 2",
+     ],
+     "notas": "Cadastradas com atributo 'Com Flex' ou 'Decode / Sem Flex' para transplante de BMS."},
+    {"categoria": "Flex", "nome": "Flex ALS (Sensor de Proximidade / Luminosidade) — iPhone 11 ao 16 Pro Max",
+     "modelos": _IPHONE_11_TO_16,
+     "notas": "Organizado por sistema físico exclusivo de cada modelo."},
+    {"categoria": "Flex", "nome": "Flex NFC / Bobina de Indução / Flash — iPhone 11 ao 16 Pro Max",
+     "modelos": _IPHONE_11_TO_16,
+     "notas": "Organizado por sistema físico exclusivo de cada modelo."},
+    {"categoria": "Flex", "nome": "Flex Power / Volume / Botão de Ação — iPhone 11 ao 16 Pro Max",
+     "modelos": _IPHONE_11_TO_16,
+     "notas": "Organizado por sistema físico exclusivo de cada modelo."},
+    {"categoria": "Biometria", "nome": "Biometrias e Botão Home (Touch ID) — iPhone 6 ao 8 Plus / SE",
+     "modelos": [
+         "iPhone 6", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus",
+         "iPhone 8", "iPhone 8 Plus", "iPhone SE (1ª geração)", "iPhone SE 2020", "iPhone SE 2022",
+     ],
+     "notas": "Separado por geração. Touch ID original é pareado com a placa-mãe."},
+    {"categoria": "Câmera", "nome": "Módulos de Câmera e Lentes Safira (Lente + Frame + OCA) — iPhone 11 ao 16 Pro Max",
+     "modelos": _IPHONE_11_TO_16,
+     "notas": "Lentes Safira, Lente+Frame+OCA e Módulos separados estritamente por modelo."},
+    {"categoria": "Carcaça", "nome": "Vidro Traseiro iPhone (Com Aro e Ímã / Furo Maior OEM)",
+     "modelos": ["iPhone 8", "iPhone 8 Plus", "iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max", *_IPHONE_11_TO_16],
+     "notas": "Agrupados por modelo com variações: Com Aro e Ímã, Furo Maior OEM e Cores."},
+    {"categoria": "Carcaça", "nome": "Carcaça Completa iPhone (Com Flex / Sem Flex / Gaveta SIM / e-SIM)",
+     "modelos": ["iPhone 8", "iPhone 8 Plus", "iPhone SE 2020", "iPhone SE 2022", "iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max", *_IPHONE_11_TO_16],
+     "notas": "Agrupadas por modelo com variações: Com Flex, Sem Flex, Gaveta SIM, e-SIM e Cor."},
 ]
 
 # --------------------------------------------------------------------------- LG
@@ -241,6 +292,37 @@ REALME = [
      "modelos": ["C61", "C63"], "notas": "Frontal unificada."},
 ]
 
+# --------------------------------------------------------------------------- INFORMÁTICA & MAQUINÁRIO
+DELL = [
+    {"categoria": "Informática", "nome": "Telas, Baterias, Palmrests e Dobradiças — Dell Latitude / Vostro / Inspiron",
+     "modelos": ["Latitude 3410", "Latitude 3420", "Latitude 5400", "Latitude 5410", "Latitude 5420", "Vostro 3400", "Vostro 3510", "Vostro 5402", "Inspiron"],
+     "notas": "Estoque auxiliar de peças para notebooks Dell."},
+]
+
+LENOVO = [
+    {"categoria": "Informática", "nome": "Telas, Baterias, Palmrests e Dobradiças — Lenovo ThinkPad / V15 / IdeaPad",
+     "modelos": ["ThinkPad E14 (Gen 1 a Gen 6)", "ThinkPad T470", "ThinkPad T480", "Lenovo V15", "IdeaPad 320 / S145"],
+     "notas": "Estoque auxiliar de peças para notebooks Lenovo."},
+]
+
+HP = [
+    {"categoria": "Informática", "nome": "Telas, Baterias, Palmrests e Dobradiças — HP ProBook / Linha 240 e 250",
+     "modelos": ["ProBook 440 G7 / G9", "HP 240 G7", "HP 250 G8 / G9"],
+     "notas": "Estoque auxiliar de peças para notebooks HP."},
+]
+
+REFOX = [
+    {"categoria": "Maquinário & Insumos", "nome": "Laser e Separação Refox — LM80E / RK10 (UV) / Separadoras RF20 e RF40",
+     "modelos": ["LM80E (Laser)", "RK10 (UV)", "Separadora RF20", "Separadora RF40"],
+     "notas": "Equipamentos de bancada Refox para separação e remoção a laser."},
+    {"categoria": "Maquinário & Insumos", "nome": "Laminação e Tira-Bolhas Refox — FM45 / Estufas UV RM26 e RM22",
+     "modelos": ["Laminadora FM45", "Estufa UV RM26", "Estufa UV RM22"],
+     "notas": "Equipamentos Refox para recondicionamento de telas e cura UV."},
+    {"categoria": "Maquinário & Insumos", "nome": "Insumos e Ferramentas Refox — Cola SupBond RA21 / Fio de Aço / OCA 250um / DF40 / DF45 / Chaves RS2 e RS3",
+     "modelos": ["Cola SupBond RA21", "Fio de Aço (0.028mm a 0.08mm)", "Cola OCA 250um", "Organizadores DF40 / DF45", "Chaves de Precisão RS2 / RS3"],
+     "notas": "Insumos e ferramentas de precisão para bancada."},
+]
+
 MASTER_GROUPS = (
     [dict(g, marca="Samsung") for g in SAMSUNG]
     + [dict(g, marca="Motorola") for g in MOTOROLA]
@@ -248,6 +330,10 @@ MASTER_GROUPS = (
     + [dict(g, marca="Apple") for g in APPLE]
     + [dict(g, marca="LG") for g in LG]
     + [dict(g, marca="Realme") for g in REALME]
+    + [dict(g, marca="Dell") for g in DELL]
+    + [dict(g, marca="Lenovo") for g in LENOVO]
+    + [dict(g, marca="HP") for g in HP]
+    + [dict(g, marca="Refox") for g in REFOX]
 )
 
 # Peças que ganharam novos modelos e mudaram de nome: o registro antigo é renomeado
@@ -308,50 +394,202 @@ MASTER_ARTICLES = [
 ]
 
 
-def _find_device(db, marca: str, modelo: str):
-    for d in db.query(Device).filter(Device.modelo.ilike(modelo)).all():
-        if (d.marca or "").lower() == marca.lower():
-            return d
-    return None
+NON_MOBILE_BRANDS = {"dell", "lenovo", "hp", "refox", "sony", "outros"}
+
+DEVICE_ALIASES = {
+    ("motorola", "motorola one"): ("Motorola", "Moto One"),
+    ("motorola", "motorola one action"): ("Motorola", "Moto One Action"),
+    ("motorola", "motorola one fusion"): ("Motorola", "Moto One Fusion"),
+    ("motorola", "motorola one macro"): ("Motorola", "Moto One Macro"),
+    ("motorola", "motorola one vision"): ("Motorola", "Moto One Vision"),
+    ("motorola", "motorola edge 40"): ("Motorola", "Moto Edge 40"),
+    ("motorola", "motorola edge 40 neo"): ("Motorola", "Moto Edge 40 Neo"),
+    ("motorola", "motorola edge 50 fusion"): ("Motorola", "Moto Edge 50 Fusion"),
+    ("motorola", "motorola edge 60 neo"): ("Motorola", "Moto Edge 60 Neo"),
+    ("apple", "iphone se (2ª geração)"): ("Apple", "iPhone SE 2020"),
+    ("apple", "iphone se (3ª geração)"): ("Apple", "iPhone SE 2022"),
+    ("xiaomi", "14c"): ("Xiaomi", "Redmi 14C"),
+    ("samsung", "galaxy j7 pro"): ("Samsung", "Galaxy J7 Pro"),
+}
+
+PART_MERGES = {
+    "Bateria BN57 (Poco X3 / Poco X3 NFC / Poco X3 Pro)":
+        "Bateria BN57 (5160mAh) — Poco X3 / Poco X3 NFC / Poco X3 Pro",
+    "Tela OLED iPhone 12 / 12 Pro Universal":
+        'Tela OLED iPhone 12 / 12 Pro Universal (6.1")',
+    "Tela Super AMOLED Redmi Note 10 4G / Note 11 4G / Poco M5s":
+        "Tela Super AMOLED Redmi Note 10 4G / Note 10S / Note 11 4G / Note 11S / Poco M5s",
+}
+
+ORPHAN_PART_REPAIRS = {
+    "Câmera Traseira Iphone 13 / 13 pro": ("Apple", ["iPhone 13", "iPhone 13 Pro"], None),
+    "Bateria A2111 (iPhone 11) — 3110mAh": ("Apple", ["iPhone 11"], "Bateria 3110mAh (A2111) exclusiva do iPhone 11."),
+    "Flex de proximidade iPhone 11": ("Apple", ["iPhone 11"], "Sensor de proximidade / auricular pareado com Face ID."),
+}
+
+
+def _default_device_attrs(marca: str, modelo: str) -> tuple[str | None, bool]:
+    """Define método de abertura e alerta de flex padrão por marca/modelo."""
+    brand_low = (marca or "").strip().lower()
+    mod_low = (modelo or "").strip().lower()
+    if brand_low in NON_MOBILE_BRANDS or "roteador" in mod_low:
+        return None, False
+    if brand_low == "apple":
+        if "ipad" in mod_low:
+            return "Frontal", True
+        # iPhone 14 (base), 14 Plus, e linha 15/16/17 abrem pela traseira (14 Pro/Max abrem pela frontal)
+        is_rear_iphone = (
+            mod_low == "iphone 14"
+            or "14 plus" in mod_low
+            or any(v in mod_low for v in ("iphone 15", "iphone 16", "iphone 17"))
+        )
+        return ("Traseira" if is_rear_iphone else "Frontal"), True
+    return "Traseira", True
+
+
+def _merge_or_rename_devices(db) -> None:
+    """Unifica aparelhos duplicados com grafias diferentes mantendo compatibilidades."""
+    all_devs = db.query(Device).order_by(Device.id).all()
+    by_key = {( (d.marca or "").strip().lower(), (d.modelo or "").strip().lower() ): d for d in all_devs}
+    compat_pairs = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
+
+    for d in all_devs:
+        key = ((d.marca or "").strip().lower(), (d.modelo or "").strip().lower())
+        target_spec = DEVICE_ALIASES.get(key)
+        if not target_spec:
+            continue
+        t_marca, t_modelo = target_spec
+        t_key = (t_marca.lower(), t_modelo.lower())
+        if d.marca == t_marca and d.modelo == t_modelo:
+            continue
+        target = by_key.get(t_key)
+        if target and target.id != d.id:
+            for c in db.query(Compatibility).filter_by(device_id=d.id).all():
+                if (target.id, c.part_id) not in compat_pairs:
+                    c.device_id = target.id
+                    compat_pairs.add((target.id, c.part_id))
+                else:
+                    db.delete(c)
+            if not target.opening_method and d.opening_method:
+                target.opening_method = d.opening_method
+            target.has_flex_cable = bool(target.has_flex_cable or d.has_flex_cable)
+            by_key.pop(key, None)
+            db.delete(d)
+        else:
+            by_key.pop(key, None)
+            d.marca = t_marca
+            d.modelo = t_modelo
+            by_key[t_key] = d
+    db.flush()
+
+
+def _merge_duplicate_parts(db) -> None:
+    """Higieniza categorias com espaços e mescla peças duplicadas conhecidas."""
+    parts = db.query(Part).order_by(Part.id).all()
+    for p in parts:
+        if p.categoria and p.categoria != p.categoria.strip():
+            p.categoria = p.categoria.strip()
+
+    by_name = {p.nome: p for p in parts}
+    compat_pairs = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
+
+    for old_name, keep_name in PART_MERGES.items():
+        old = by_name.get(old_name)
+        keep = by_name.get(keep_name)
+        if not old or not keep or old.id == keep.id:
+            continue
+        for c in db.query(Compatibility).filter_by(part_id=old.id).all():
+            if (c.device_id, keep.id) not in compat_pairs:
+                c.part_id = keep.id
+                compat_pairs.add((c.device_id, keep.id))
+            else:
+                db.delete(c)
+        db.delete(old)
+    db.flush()
 
 
 def seed_compat_master(db) -> dict:
     """Cria (sem duplicar) aparelhos, peças, vínculos e dicas da lista mestra."""
     new_devices = new_parts = new_links = new_articles = 0
 
+    _merge_or_rename_devices(db)
+    _merge_duplicate_parts(db)
+
+    # Carrega registros em memória com 1 SELECT por tabela para inicialização rápida
+    existing_parts = {p.nome: p for p in db.query(Part).all()}
     for old_name, new_name in RENAMES.items():
-        old = db.query(Part).filter_by(nome=old_name).first()
-        if old and not db.query(Part).filter_by(nome=new_name).first():
+        old = existing_parts.get(old_name)
+        if old and new_name not in existing_parts:
             old.nome = new_name
+            existing_parts.pop(old_name)
+            existing_parts[new_name] = old
     db.flush()
 
+    existing_devices = {
+        ((d.marca or "").strip().lower(), (d.modelo or "").strip().lower()): d
+        for d in db.query(Device).all()
+    }
+    # Preenche método de abertura padrão para aparelhos que ficaram sem essa informação
+    for d in existing_devices.values():
+        if d.opening_method is None and (d.marca or "").strip().lower() not in NON_MOBILE_BRANDS:
+            opening, flex = _default_device_attrs(d.marca, d.modelo)
+            if opening:
+                d.opening_method = opening
+                d.has_flex_cable = flex
+
+    existing_links = {(c.device_id, c.part_id) for c in db.query(Compatibility).all()}
+
+    def _ensure_device(marca: str, modelo: str) -> Device:
+        nonlocal new_devices
+        key = (marca.lower(), modelo.lower())
+        device = existing_devices.get(key)
+        if not device:
+            opening, flex = _default_device_attrs(marca, modelo)
+            device = Device(marca=marca, modelo=modelo, opening_method=opening, has_flex_cable=flex)
+            db.add(device)
+            db.flush()
+            existing_devices[key] = device
+            new_devices += 1
+        return device
+
     for group in MASTER_GROUPS:
-        part = db.query(Part).filter_by(nome=group["nome"]).first()
+        part = existing_parts.get(group["nome"])
         if not part:
             part = Part(nome=group["nome"], categoria=group["categoria"])
             db.add(part)
+            db.flush()
+            existing_parts[group["nome"]] = part
             new_parts += 1
 
         for item in group["modelos"]:
             modelo, nota = (item, None) if isinstance(item, str) else item
             nota = nota or group.get("notas")
-            device = _find_device(db, group["marca"], modelo)
-            if not device:
-                device = Device(marca=group["marca"], modelo=modelo, opening_method=None, has_flex_cable=False)
-                db.add(device)
-                new_devices += 1
-            db.flush()
-            exists = db.query(Compatibility).filter_by(device_id=device.id, part_id=part.id).first()
-            if not exists:
+            device = _ensure_device(group["marca"], modelo)
+            if (device.id, part.id) not in existing_links:
                 db.add(Compatibility(device_id=device.id, part_id=part.id, notas=nota))
+                existing_links.add((device.id, part.id))
                 new_links += 1
 
+    # Vincula peças órfãs legadas caso já existam no banco (sem criar novas peças)
+    for part_name, (marca, modelos, nota) in ORPHAN_PART_REPAIRS.items():
+        part = existing_parts.get(part_name)
+        if not part:
+            continue
+        for modelo in modelos:
+            dev = existing_devices.get((marca.lower(), modelo.lower()))
+            if dev and (dev.id, part.id) not in existing_links:
+                db.add(Compatibility(device_id=dev.id, part_id=part.id, notas=nota))
+                existing_links.add((dev.id, part.id))
+                new_links += 1
+
+    existing_articles = {
+        (a.target_device, a.ai_context_text) for a in db.query(WikiArticle).all()
+    }
     for item in MASTER_ARTICLES:
-        exists = db.query(WikiArticle).filter_by(
-            target_device=item["target_device"], ai_context_text=item["ai_context_text"]
-        ).first()
-        if not exists:
+        key = (item["target_device"], item["ai_context_text"])
+        if key not in existing_articles:
             db.add(WikiArticle(**item))
+            existing_articles.add(key)
             new_articles += 1
 
     db.flush()

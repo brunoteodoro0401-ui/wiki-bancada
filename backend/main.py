@@ -50,7 +50,7 @@ _extra_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", *_extra_origins],
-    allow_origin_regex=r"https://.*\.(vercel\.app|web\.app|firebaseapp\.com|onrender\.com)",
+    allow_origin_regex=r"https://(wiki-bancada[a-z0-9-]*)\.(vercel\.app|web\.app|firebaseapp\.com|onrender\.com)",
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -67,7 +67,7 @@ def test_compat_master_list_is_complete_and_idempotent(db):
 
     first = seed.seed_compat_master_list(db)
     db.commit()
-    assert first["parts"] == len(master.MASTER_GROUPS) == 93
+    assert first["parts"] == len(master.MASTER_GROUPS) == 110
     assert first["devices"] > 50 and first["compatibilities"] > 150
 
     # Busca por nome de peça devolve os modelos da lista mestra
