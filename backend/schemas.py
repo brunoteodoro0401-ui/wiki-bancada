@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from security import MAX_PASSWORD_BYTES
 
 OpeningMethod = Literal["Frontal", "Traseira"]
-Role = Literal["admin", "tecnico"]
+Role = Literal["admin", "tecnico", "bloqueado"]
 IngestType = Literal["url", "youtube", "search", "text"]
 AIProvider = Literal["gemini", "huggingface", "auto"]
 
@@ -45,6 +45,14 @@ class TokenOut(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: Role
+
+
+class UserSettingsOut(BaseModel):
+    require_approval: bool
+
+
+class UserSettingsIn(BaseModel):
+    require_approval: bool
 
 
 # ---------- Devices ----------

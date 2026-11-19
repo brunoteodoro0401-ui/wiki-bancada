@@ -18,10 +18,23 @@ export default function EntityFormModal({ title, fields, initial, onSubmit, onCl
   const [values, setValues] = useState(() =>
     Object.fromEntries(fields.map((f) => [f.name, initial?.[f.name] ?? (f.type === 'checkbox' ? false : '')])),
   )
+  const [selectQueries, setSelectQueries] = useState({})
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
 
   const set = (name, value) => setValues((v) => ({ ...v, [name]: value }))
+
+  function filteredSelectOptions(field) {
+    const q = (selectQueries[field.name] || '').trim().toLowerCase()
+    if (!q || field.options.length <= 15) return field.options
+    const current = String(values[field.name] ?? '')
+    return field.options.filter(
+      (o) =>
+        o.value === '' ||
+        String(o.value) === current ||
+        String(o.label || '').toLowerCase().includes(q),
+    )
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -55,11 +68,23 @@ export default function EntityFormModal({ title, fields, initial, onSubmit, onCl
               {f.type === 'textarea' ? (
                 <textarea id={id} rows={4} required={f.required} value={values[f.name]} onChange={(e) => set(f.name, e.target.value)} className={inputClass} />
               ) : f.type === 'select' ? (
-                <select id={id} required={f.required} value={values[f.name] ?? ''} onChange={(e) => set(f.name, e.target.value)} className={inputClass}>
-                  {f.options.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <div className="space-y-1.5">
+                  {f.options.length > 15 && (
+                    <input
+                      type="search"
+                      value={selectQueries[f.name] || ''}
+                      onChange={(e) => setSelectQueries((prev) => ({ ...prev, [f.name]: e.target.value }))}
+                      placeholder="🔎 Filtrar opções..."
+                      aria-label={`Filtrar ${f.label}`}
+                      className={inputClass}
+                    />
+                  )}
+                  <select id={id} required={f.required} value={values[f.name] ?? ''} onChange={(e) => set(f.name, e.target.value)} className={inputClass}>
+                    {filteredSelectOptions(f).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
               ) : (
                 <input id={id} type="text" required={f.required} value={values[f.name] ?? ''} onChange={(e) => set(f.name, e.target.value)} className={inputClass} />
               )}

@@ -13,6 +13,7 @@ import json
 import os
 import re
 import socket
+import time
 import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -286,25 +287,55 @@ def format_history_block(history: Optional[List[Dict]]) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+_DOCS_CACHE: Dict = {"key": None, "expires_at": 0.0, "docs": []}
+_DOCS_CACHE_TTL = 60.0
+
+
+def invalidate_docs_cache() -> None:
+    _DOCS_CACHE["key"] = None
+    _DOCS_CACHE["expires_at"] = 0.0
+    _DOCS_CACHE["docs"] = []
+
+
 def build_documents(db: Session) -> List[Dict]:
+    counts_key = (
+        os.environ.get("PYTEST_CURRENT_TEST", ""),
+        id(db.get_bind()),
+        db.query(models.WikiArticle).count(),
+        db.query(models.Device).count(),
+        db.query(models.Compatibility).count(),
+    )
+    now = time.monotonic()
+    if _DOCS_CACHE["key"] == counts_key and now < _DOCS_CACHE["expires_at"]:
+        return _DOCS_CACHE["docs"]
+
     docs: List[Dict] = []
     for a in db.query(models.WikiArticle).all():
+        text = a.ai_context_text
+        extra = a.tags or ""
         docs.append({
             "type": "wiki", "id": a.id,
             "title": f"{a.target_device} — {a.category or 'Dica'}",
             "head": a.target_device,
-            "text": a.ai_context_text,
-            "extra": a.tags or "",
+            "text": text,
+            "extra": extra,
+            "head_tokens": tokenize(a.target_device, expand_synonyms=True),
+            "body_tokens": tokenize(text, expand_synonyms=True) | tokenize(extra, expand_synonyms=True),
         })
     for d in db.query(models.Device).all():
         abertura = d.opening_method or "não informada"
         flex = "possui cabo flex sensível na abertura" if d.has_flex_cable else "sem alerta de flex"
+        head = f"{d.marca} {d.modelo}"
+        text = f"Abertura {abertura}; {flex}."
+        extra = "abertura abrir desmontar"
         docs.append({
             "type": "device", "id": d.id,
-            "title": f"{d.marca} {d.modelo}",
-            "head": f"{d.marca} {d.modelo}",
-            "text": f"Abertura {abertura}; {flex}.",
-            "extra": "abertura abrir desmontar",
+            "title": head,
+            "head": head,
+            "text": text,
+            "extra": extra,
+            "head_tokens": tokenize(head, expand_synonyms=True),
+            "body_tokens": tokenize(text, expand_synonyms=True) | tokenize(extra, expand_synonyms=True),
         })
     rows = (
         db.query(models.Compatibility, models.Device, models.Part)
@@ -313,13 +344,21 @@ def build_documents(db: Session) -> List[Dict]:
         .all()
     )
     for c, d, p in rows:
+        head = f"{d.marca} {d.modelo} {p.nome}"
+        text = c.notas or f"{p.nome} é compatível com {d.marca} {d.modelo}."
+        extra = p.categoria or ""
         docs.append({
             "type": "compatibility", "id": c.id,
             "title": f"Compatibilidade: {p.nome} × {d.marca} {d.modelo}",
-            "head": f"{d.marca} {d.modelo} {p.nome}",
-            "text": c.notas or f"{p.nome} é compatível com {d.marca} {d.modelo}.",
-            "extra": p.categoria or "",
+            "head": head,
+            "text": text,
+            "extra": extra,
+            "head_tokens": tokenize(head, expand_synonyms=True),
+            "body_tokens": tokenize(text, expand_synonyms=True) | tokenize(extra, expand_synonyms=True),
         })
+    _DOCS_CACHE["key"] = counts_key
+    _DOCS_CACHE["expires_at"] = now + _DOCS_CACHE_TTL
+    _DOCS_CACHE["docs"] = docs
     return docs
 
 
@@ -329,8 +368,8 @@ def retrieve(db: Session, question: str, k: int = 5) -> List[Dict]:
         return []
     scored = []
     for doc in build_documents(db):
-        head = tokenize(doc["head"], expand_synonyms=True)
-        body = tokenize(doc["text"], expand_synonyms=True) | tokenize(doc["extra"], expand_synonyms=True)
+        head = doc.get("head_tokens") or tokenize(doc["head"], expand_synonyms=True)
+        body = doc.get("body_tokens") or (tokenize(doc["text"], expand_synonyms=True) | tokenize(doc["extra"], expand_synonyms=True))
         score = 2 * len(q & head) + len(q & body)
         if score > 0:
             scored.append((score, doc))

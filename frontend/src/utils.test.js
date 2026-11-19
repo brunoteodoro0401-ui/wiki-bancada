@@ -139,3 +139,19 @@ describe('formatDeviceLabel e matchesDeviceTarget', () => {
     expect(matchesDeviceTarget('Samsung (Geral)', 'Samsung', 'Galaxy A54')).toBe(true)
   })
 })
+
+
+describe('PDF multipagina para relato longo', () => {
+  it('cria pagina 2 quando as observacoes tecnicas ultrapassam a primeira pagina', () => {
+    const longNotes = Array.from({ length: 18 }, (_, i) => `Linha tecnica detalhada numero ${i + 1} com consumo na fonte`).join('\n')
+    const pdfBytes = generateOsPdfBytes(
+      { osNumber: 'OS-0999', status: 'encerrada', deviceModel: 'iPhone 14', serviceValue: 'R$ 350,00', notes: longNotes },
+      [{ id: 'tela_touch', label: 'Tela / Touch' }],
+      { ok: 'OK' },
+    )
+    const text = new TextDecoder('latin1').decode(pdfBytes)
+    expect(text).toContain('/Count 2')
+    expect(text).toContain('Valor / Orcamento:')
+    expect(text).not.toContain('R$ R$')
+  })
+})

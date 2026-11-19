@@ -103,3 +103,41 @@ def test_demoted_admin_loses_access_immediately(client, db, admin_headers):
     db.query(models.User).filter_by(email="admin@example.com").one().role = "tecnico"
     db.commit()
     assert client.post("/devices", json={"marca": "X", "modelo": "Y"}, headers=admin_headers).status_code == 403
+
+
+
+def test_admin_can_block_unblock_and_delete_user(client, db, admin_headers, tech_headers):
+    import models
+
+    tech = db.query(models.User).filter_by(email="tech@example.com").one()
+    me = client.get("/auth/me", headers=admin_headers).json()
+
+    # Bloqueia técnico e verifica que token existente e novo login são barrados
+    r_blk = client.put(f"/users/{tech.id}/role", json={"role": "bloqueado"}, headers=admin_headers)
+    assert r_blk.status_code == 200 and r_blk.json()["role"] == "bloqueado"
+    assert client.get("/auth/me", headers=tech_headers).status_code == 403
+    assert client.post("/auth/login", json={"email": "tech@example.com", "senha": "senha1234"}).status_code == 403
+
+    # Aprova / desbloqueia técnico
+    r_ok = client.put(f"/users/{tech.id}/role", json={"role": "tecnico"}, headers=admin_headers)
+    assert r_ok.status_code == 200 and r_ok.json()["role"] == "tecnico"
+    assert client.get("/auth/me", headers=tech_headers).status_code == 200
+
+    # Não pode se autoexcluir; técnico não pode excluir; admin exclui outro usuário
+    assert client.delete(f"/users/{me['id']}", headers=admin_headers).status_code == 400
+    assert client.delete(f"/users/{tech.id}", headers=tech_headers).status_code == 403
+    assert client.delete(f"/users/{tech.id}", headers=admin_headers).status_code == 200
+    assert client.get("/auth/me", headers=tech_headers).status_code == 401
+
+
+def test_user_approval_setting_requires_admin_and_blocks_new_signups(client, admin_headers, tech_headers):
+    assert client.get("/users/settings", headers=tech_headers).status_code == 403
+    assert client.get("/users/settings", headers=admin_headers).json() == {"require_approval": False}
+
+    r_on = client.put("/users/settings", json={"require_approval": True}, headers=admin_headers)
+    assert r_on.status_code == 200 and r_on.json() == {"require_approval": True}
+
+    r_reg = register(client, email="novo@example.com")
+    assert r_reg.status_code == 201
+    assert r_reg.json()["role"] == "bloqueado"
+    assert client.post("/auth/login", json={"email": "novo@example.com", "senha": "senha1234"}).status_code == 403

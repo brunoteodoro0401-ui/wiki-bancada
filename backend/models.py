@@ -17,8 +17,8 @@ class Device(Base):
     __tablename__ = "Devices"
 
     id = Column(Integer, primary_key=True, index=True)
-    marca = Column(String, nullable=False)
-    modelo = Column(String, nullable=False)
+    marca = Column(String, index=True, nullable=False)
+    modelo = Column(String, index=True, nullable=False)
     opening_method = Column(String)
     has_flex_cable = Column(Boolean, default=False)
 
@@ -27,16 +27,16 @@ class Part(Base):
     __tablename__ = "Parts"
 
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String, nullable=False)
-    categoria = Column(String)
+    nome = Column(String, index=True, nullable=False)
+    categoria = Column(String, index=True)
 
 
 class Compatibility(Base):
     __tablename__ = "Compatibilities"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("Devices.id"), nullable=False)
-    part_id = Column(Integer, ForeignKey("Parts.id"), nullable=False)
+    device_id = Column(Integer, ForeignKey("Devices.id"), index=True, nullable=False)
+    part_id = Column(Integer, ForeignKey("Parts.id"), index=True, nullable=False)
     notas = Column(Text)
 
 

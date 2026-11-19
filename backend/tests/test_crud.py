@@ -150,3 +150,13 @@ def test_service_orders_lifecycle_and_restore(client, tech_headers):
     info = client.get("/service_orders/storage_info").json()
     assert info["total_orders"] == 2
     assert "local_folder_path" in info
+
+
+
+def test_service_orders_avoids_duplicate_os_number_collision(client, tech_headers):
+    client.headers.update(tech_headers)
+    r1 = client.post("/service_orders", json={"os_number": "OS-0050", "device_model": "Galaxy A54"})
+    r2 = client.post("/service_orders", json={"os_number": "OS-0050", "device_model": "Moto G84"})
+    assert r1.status_code == 201 and r2.status_code == 201
+    assert r1.json()["os_number"] == "OS-0050"
+    assert r2.json()["os_number"] == "OS-0051"

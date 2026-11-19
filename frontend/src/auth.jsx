@@ -18,6 +18,16 @@ export function AuthProvider({ children }) {
       .finally(() => setReady(true))
   }, [])
 
+  // Escuta expiração automática do token (HTTP 401) para atualizar a sessão
+  useEffect(() => {
+    const handleExpired = () => {
+      localStorage.removeItem(TOKEN_KEY)
+      setUser(null)
+    }
+    window.addEventListener('bancada:unauthorized', handleExpired)
+    return () => window.removeEventListener('bancada:unauthorized', handleExpired)
+  }, [])
+
   const login = useCallback(async (email, senha) => {
     const res = await api.post('/auth/login', { email, senha })
     localStorage.setItem(TOKEN_KEY, res.data.access_token)
@@ -25,12 +35,23 @@ export function AuthProvider({ children }) {
   }, [])
 
   const register = useCallback(async (nome, email, senha) => {
-    await api.post('/auth/register', { nome, email, senha })
+    const res = await api.post('/auth/register', { nome, email, senha })
+    if (res.data?.role === 'bloqueado') {
+      throw {
+        response: {
+          data: {
+            detail: 'Cadastro realizado! Sua conta está aguardando aprovação de um administrador.',
+          },
+        },
+      }
+    }
     await login(email, senha)
   }, [login])
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem('bancada_checklists_history')
+    sessionStorage.removeItem('bancada_chat_messages')
     setUser(null)
   }, [])
 

@@ -11,6 +11,21 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (err) => {
+    const status = err?.response?.status
+    const url = err?.config?.url || ''
+    if (status === 401 && !url.includes('/auth/login') && localStorage.getItem(TOKEN_KEY)) {
+      localStorage.removeItem(TOKEN_KEY)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bancada:unauthorized'))
+      }
+    }
+    return Promise.reject(err)
+  },
+)
+
 /** Extrai uma mensagem legível de um erro do axios/FastAPI. */
 export function errorMessage(err, fallback = 'Algo deu errado. Tente novamente.') {
   if (!err.response) return `Não foi possível conectar à API em ${API_BASE_URL}.`

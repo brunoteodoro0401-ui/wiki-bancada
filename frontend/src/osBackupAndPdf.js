@@ -162,58 +162,128 @@ export function generateOsPdfBytes(order, checklistItems, _statusLabels) {
     y -= 17
   }
 
-  // Observações Técnicas e Relato
+  const allNoteLines = wrapText(notes || 'Sem observacoes adicionais registradas.', 86)
+  const allCloseLines =
+    closureNotes || statusRaw === 'encerrada'
+      ? wrapText(closureNotes || 'Ordem de Servico encerrada e aparelho inspecionado na bancada.', 86)
+      : []
+
+  // Observações Técnicas e Relato (Página 1: até 10 linhas respeitando área de rodapé)
   y -= 10
   ops.push('0.11 0.25 0.68 rg')
   ops.push(`BT /F2 10.5 Tf 40 ${y} Td ${toPdfWinAnsiLiteral('OBSERVACOES TECNICAS E RELATO DE ENTRADA:')} Tj ET`)
   y -= 14
   ops.push('0.10 0.12 0.16 rg')
-  const noteLines = wrapText(notes || 'Sem observacoes adicionais registradas.', 86).slice(0, 5)
-  for (const line of noteLines) {
-    ops.push(`BT /F1 9 Tf 46 ${y} Td ${toPdfWinAnsiLiteral(line)} Tj ET`)
-    y -= 13
-  }
-
-  // Laudo de Encerramento / Solução Aplicada
-  if (closureNotes || statusRaw === 'encerrada') {
-    y -= 8
-    ops.push('0.05 0.48 0.25 rg')
-    ops.push(`BT /F2 10.5 Tf 40 ${y} Td ${toPdfWinAnsiLiteral('SERVICO EXECUTADO / LAUDO DE ENCERRAMENTO:')} Tj ET`)
-    y -= 14
-    ops.push('0.10 0.12 0.16 rg')
-    const closeLines = wrapText(
-      closureNotes || 'Ordem de Servico encerrada e aparelho inspecionado na bancada.',
-      86,
-    ).slice(0, 4)
-    for (const line of closeLines) {
+  const page1Notes = []
+  const overflowNotes = []
+  for (const line of allNoteLines) {
+    if (page1Notes.length < 10 && y >= 130) {
+      page1Notes.push(line)
       ops.push(`BT /F1 9 Tf 46 ${y} Td ${toPdfWinAnsiLiteral(line)} Tj ET`)
       y -= 13
+    } else {
+      overflowNotes.push(line)
     }
   }
 
-  // Assinaturas no rodapé
-  ops.push('0.55 0.60 0.68 RG 0.8 w')
-  ops.push('60 88 m 260 88 l S')
-  ops.push('335 88 m 535 88 l S')
-  ops.push('0.25 0.30 0.38 rg')
-  ops.push(`BT /F1 8.5 Tf 95 74 Td ${toPdfWinAnsiLiteral('Assinatura do Tecnico Responsavel')} Tj ET`)
-  ops.push(`BT /F1 8.5 Tf 375 74 Td ${toPdfWinAnsiLiteral('Assinatura do Cliente / Ciente')} Tj ET`)
-  ops.push(
-    `BT /F1 7.5 Tf 40 42 Td ${toPdfWinAnsiLiteral(
-      `Documento gerado pelo sistema Wiki de Bancada em ${new Date().toLocaleString('pt-BR')}`,
-    )} Tj ET`,
-  )
+  // Laudo de Encerramento / Solução Aplicada
+  const overflowClose = []
+  if (allCloseLines.length > 0) {
+    if (y >= 150) {
+      y -= 8
+      ops.push('0.05 0.48 0.25 rg')
+      ops.push(`BT /F2 10.5 Tf 40 ${y} Td ${toPdfWinAnsiLiteral('SERVICO EXECUTADO / LAUDO DE ENCERRAMENTO:')} Tj ET`)
+      y -= 14
+      ops.push('0.10 0.12 0.16 rg')
+      let addedClose = 0
+      for (const line of allCloseLines) {
+        if (addedClose < 8 && y >= 115) {
+          ops.push(`BT /F1 9 Tf 46 ${y} Td ${toPdfWinAnsiLiteral(line)} Tj ET`)
+          y -= 13
+          addedClose += 1
+        } else {
+          overflowClose.push(line)
+        }
+      }
+    } else {
+      overflowClose.push(...allCloseLines)
+    }
+  }
+
+  function appendSignatures(targetOps) {
+    targetOps.push('0.55 0.60 0.68 RG 0.8 w')
+    targetOps.push('60 88 m 260 88 l S')
+    targetOps.push('335 88 m 535 88 l S')
+    targetOps.push('0.25 0.30 0.38 rg')
+    targetOps.push(`BT /F1 8.5 Tf 95 74 Td ${toPdfWinAnsiLiteral('Assinatura do Tecnico Responsavel')} Tj ET`)
+    targetOps.push(`BT /F1 8.5 Tf 375 74 Td ${toPdfWinAnsiLiteral('Assinatura do Cliente / Ciente')} Tj ET`)
+    targetOps.push(
+      `BT /F1 7.5 Tf 40 42 Td ${toPdfWinAnsiLiteral(
+        `Documento gerado pelo sistema Wiki de Bancada em ${new Date().toLocaleString('pt-BR')}`,
+      )} Tj ET`,
+    )
+  }
+
+  const hasPage2 = overflowNotes.length > 0 || overflowClose.length > 0
+  if (hasPage2) {
+    ops.push('0.35 0.40 0.48 rg')
+    ops.push(`BT /F1 8.5 Tf 40 60 Td ${toPdfWinAnsiLiteral('Relato tecnico continua na pagina 2.')} Tj ET`)
+  } else {
+    appendSignatures(ops)
+  }
 
   const streamContent = ops.join('\n')
 
   const objects = [
     '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    hasPage2
+      ? '2 0 obj\n<< /Type /Pages /Kids [3 0 R 7 0 R] /Count 2 >>\nendobj\n'
+      : '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
     '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>\nendobj\n',
     '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n',
     '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n',
     `6 0 obj\n<< /Length ${streamContent.length} >>\nstream\n${streamContent}\nendstream\nendobj\n`,
   ]
+
+  if (hasPage2) {
+    const ops2 = []
+    ops2.push('0.11 0.25 0.68 rg')
+    ops2.push('40 780 515 32 re f')
+    ops2.push('1 1 1 rg')
+    ops2.push(
+      `BT /F2 12 Tf 52 792 Td ${toPdfWinAnsiLiteral(`WIKI DE BANCADA - CONTINUACAO DO LAUDO (${osNum} | ${deviceModel})`)} Tj ET`,
+    )
+    let y2 = 750
+    if (overflowNotes.length > 0) {
+      ops2.push('0.11 0.25 0.68 rg')
+      ops2.push(`BT /F2 10.5 Tf 40 ${y2} Td ${toPdfWinAnsiLiteral('OBSERVACOES TECNICAS (CONTINUACAO):')} Tj ET`)
+      y2 -= 15
+      ops2.push('0.10 0.12 0.16 rg')
+      for (const line of overflowNotes) {
+        if (y2 < 120) break
+        ops2.push(`BT /F1 9 Tf 46 ${y2} Td ${toPdfWinAnsiLiteral(line)} Tj ET`)
+        y2 -= 13
+      }
+      y2 -= 10
+    }
+    if (overflowClose.length > 0 && y2 >= 135) {
+      ops2.push('0.05 0.48 0.25 rg')
+      ops2.push(`BT /F2 10.5 Tf 40 ${y2} Td ${toPdfWinAnsiLiteral('SERVICO EXECUTADO / LAUDO DE ENCERRAMENTO:')} Tj ET`)
+      y2 -= 15
+      ops2.push('0.10 0.12 0.16 rg')
+      for (const line of overflowClose) {
+        if (y2 < 120) break
+        ops2.push(`BT /F1 9 Tf 46 ${y2} Td ${toPdfWinAnsiLiteral(line)} Tj ET`)
+        y2 -= 13
+      }
+    }
+    appendSignatures(ops2)
+    const stream2 = ops2.join('\n')
+    objects.push(
+      '7 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 8 0 R >>\nendobj\n',
+      `8 0 obj\n<< /Length ${stream2.length} >>\nstream\n${stream2}\nendstream\nendobj\n`,
+    )
+  }
 
   let pdf = '%PDF-1.4\n'
   const offsets = [0]

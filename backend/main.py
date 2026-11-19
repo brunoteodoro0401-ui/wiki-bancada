@@ -2,12 +2,14 @@ import datetime as dt
 import json
 import os
 import re
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import models
@@ -27,6 +29,14 @@ from security import (
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     if "PYTEST_CURRENT_TEST" not in os.environ:
+        with engine.begin() as conn:
+            for ddl in (
+                'CREATE INDEX IF NOT EXISTS ix_compat_device_id ON "Compatibilities" (device_id)',
+                'CREATE INDEX IF NOT EXISTS ix_compat_part_id ON "Compatibilities" (part_id)',
+                'CREATE INDEX IF NOT EXISTS ix_devices_marca ON "Devices" (marca)',
+                'CREATE INDEX IF NOT EXISTS ix_parts_categoria ON "Parts" (categoria)',
+            ):
+                conn.execute(text(ddl))
         import seed
         db = SessionLocal()
         try:
@@ -72,13 +82,29 @@ def _get_or_404(db: Session, model, obj_id: int, label: str):
 
 
 # ====================== Auth ======================
+_LOGIN_ATTEMPTS: dict[str, list[float]] = {}
+_LOGIN_WINDOW_SECONDS = 60
+_LOGIN_MAX_FAILURES = 8
+
+
+def _require_approval_enabled(db: Session) -> bool:
+    row = db.get(models.AppSetting, "require_user_approval")
+    return bool(row and row.value.strip().lower() == "true")
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    return xff or (request.client.host if request.client else "unknown")
+
+
 @app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
 def register(data: schemas.RegisterIn, db: Session = Depends(get_db)):
     email = data.email.lower()
     if db.query(models.User).filter(models.User.email == email).first():
         raise HTTPException(409, "E-mail já cadastrado")
-    # Cadastro público sempre cria técnico; admin só via seed ou por outro admin.
-    user = models.User(nome=data.nome, email=email, senha=hash_password(data.senha), role="tecnico")
+    # Quando a aprovação estiver ativa, novos cadastros nascem aguardando liberação de um admin.
+    initial_role = "bloqueado" if _require_approval_enabled(db) else "tecnico"
+    user = models.User(nome=data.nome, email=email, senha=hash_password(data.senha), role=initial_role)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -86,11 +112,24 @@ def register(data: schemas.RegisterIn, db: Session = Depends(get_db)):
 
 
 @app.post("/auth/login", response_model=schemas.TokenOut)
-def login(data: schemas.LoginIn, db: Session = Depends(get_db)):
+def login(request: Request, data: schemas.LoginIn, db: Session = Depends(get_db)):
+    ip = _client_ip(request)
+    now = time.monotonic()
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        recent = [ts for ts in _LOGIN_ATTEMPTS.get(ip, []) if now - ts < _LOGIN_WINDOW_SECONDS]
+        _LOGIN_ATTEMPTS[ip] = recent
+        if len(recent) >= _LOGIN_MAX_FAILURES:
+            raise HTTPException(429, "Muitas tentativas de login. Aguarde 1 minuto e tente novamente.")
+
     user = db.query(models.User).filter(models.User.email == data.email.lower()).first()
     ok = verify_password(data.senha, user.senha if user else _DUMMY_HASH)
     if not user or not ok:
+        if "PYTEST_CURRENT_TEST" not in os.environ:
+            _LOGIN_ATTEMPTS.setdefault(ip, []).append(now)
         raise HTTPException(401, "E-mail ou senha inválidos")
+    _LOGIN_ATTEMPTS.pop(ip, None)
+    if user.role == "bloqueado":
+        raise HTTPException(403, "Sua conta está aguardando aprovação ou foi bloqueada pelo administrador.")
     return {"access_token": create_access_token(user), "token_type": "bearer", "user": user}
 
 
@@ -102,6 +141,22 @@ def me(user: models.User = Depends(get_current_user)):
 @app.get("/users", response_model=List[schemas.UserOut])
 def list_users(db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
     return db.query(models.User).order_by(models.User.id).all()
+
+
+@app.get("/users/settings", response_model=schemas.UserSettingsOut)
+def get_user_settings(db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
+    return {"require_approval": _require_approval_enabled(db)}
+
+
+@app.put("/users/settings", response_model=schemas.UserSettingsOut)
+def update_user_settings(
+    data: schemas.UserSettingsIn,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    db.merge(models.AppSetting(key="require_user_approval", value="true" if data.require_approval else "false"))
+    db.commit()
+    return {"require_approval": data.require_approval}
 
 
 @app.put("/users/{user_id}/role", response_model=schemas.UserOut)
@@ -118,6 +173,20 @@ def update_role(
     db.commit()
     db.refresh(user)
     return user
+
+
+@app.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    user = _get_or_404(db, models.User, user_id, "Usuário")
+    if user.id == admin.id:
+        raise HTTPException(400, "Você não pode excluir a sua própria conta")
+    db.delete(user)
+    db.commit()
+    return {"ok": True}
 
 
 # ====================== Devices ======================
@@ -147,6 +216,7 @@ def update_device(device_id: int, data: schemas.DeviceBase, db: Session = Depend
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
+    rag.invalidate_docs_cache()
     return obj
 
 
@@ -186,6 +256,7 @@ def update_part(part_id: int, data: schemas.PartBase, db: Session = Depends(get_
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
+    rag.invalidate_docs_cache()
     return obj
 
 
@@ -274,6 +345,7 @@ def update_compat(compat_id: int, data: schemas.CompatBase, db: Session = Depend
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
+    rag.invalidate_docs_cache()
     return _compat_out(obj, db)
 
 
@@ -312,6 +384,7 @@ def update_article(article_id: int, data: schemas.WikiBase, db: Session = Depend
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
+    rag.invalidate_docs_cache()
     return obj
 
 
@@ -522,7 +595,11 @@ def list_service_orders(
 @app.post("/service_orders", response_model=schemas.ServiceOrderOut, status_code=201)
 def create_service_order(data: schemas.ServiceOrderIn, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     now_str = dt.datetime.now().strftime("%d/%m/%Y %H:%M")
-    os_num = (data.os_number or "").strip() or _next_os_number(db)
+    requested_num = (data.os_number or "").strip()
+    if requested_num and db.query(models.ServiceOrder).filter(models.ServiceOrder.os_number == requested_num).first():
+        os_num = _next_os_number(db)
+    else:
+        os_num = requested_num or _next_os_number(db)
     closed_at = data.closed_at or (now_str if data.status == "encerrada" else None)
     obj = models.ServiceOrder(
         os_number=os_num,

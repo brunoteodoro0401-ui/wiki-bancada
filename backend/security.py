@@ -75,6 +75,11 @@ def get_current_user(
     user = db.get(models.User, user_id)
     if user is None:
         raise unauthorized
+    if user.role == "bloqueado":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Sua conta está aguardando aprovação ou foi bloqueada pelo administrador.",
+        )
     return user
 
 
